@@ -1,3 +1,3 @@
-# BLUEPRINT specific codes
+# BLUEPRINT specific code
 
 
