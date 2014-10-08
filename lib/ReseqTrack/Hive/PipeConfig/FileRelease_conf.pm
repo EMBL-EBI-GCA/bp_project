@@ -62,7 +62,7 @@ sub default_options {
     return {
         %{ $self->SUPER::default_options() },               # inherit other stuff from the base class
 
-        'pipeline_name' => 'file_move',                     # name used by the beekeeper to prefix job names on the farm
+        'pipeline_name' => 'file_release',                     # name used by the beekeeper to prefix job names on the farm
 
         seeding_module => 'ReseqTrack::Hive::PipeSeed::ForeignFiles',
         seeding_options => {  

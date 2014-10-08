@@ -40,8 +40,7 @@ sub derive_path {
   my ( $filename, $incoming_dirname ) = fileparse( $dropbox_path );
   
   if ( $filename =~ m/^(ERR\d{6})/ ) {  ### check for ENA id 
-    throw( 'Expection sample name got ENA run id' );   ### ENA is support is not enabled
-    
+    throw( 'Expection sample name got ENA run id' );   ### ENA is support is disabled
   }
   elsif ( $incoming_dirname =~ m{/CNAG/} ) {  ### data in CNAG drop location
   
@@ -91,9 +90,6 @@ sub derive_path {
     throw( "Cannot find run id from $filename" );
   }
   
-
-
-  
  return $destination; 
  
 }   
@@ -103,7 +99,7 @@ sub _get_meta_data {
   my %meta_data;
   my @headers;
 
-  open my $mdfh, $meta_data_file or die "Could not open $meta_data_file: $!";
+  open my $mdfh,'<', $meta_data_file or die "Could not open $meta_data_file: $!";
 
   while (<$mdfh>) {
     chomp;
@@ -118,9 +114,7 @@ sub _get_meta_data {
       @headers = map { lc($_) } @vals;
     }
   }
-
   close $mdfh;
-
   return \%meta_data;
 }
 
@@ -362,7 +356,6 @@ sub _get_new_path {
   $destination =~ s/[ ,;()]/_/g;
   $destination =~ s/_\//\//g; ## not  allowing "abc_/def"
   $destination =~ s/_+/_/g;
-  
   
   return $destination;
 }
