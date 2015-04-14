@@ -5,11 +5,9 @@
 library(reshape)
 library(xlsx)
 
-#args<-commandArgs(TRUE)
+args<-commandArgs(TRUE)
 
-#matfile<-c(args[1]) #path to wp10 .tsv file
-
-matfile<-c("/Users/ernesto/projects/wp10_report/bp_wp10_matrix.tsv")
+matfile<-c(args[1]) #path to wp10 .tsv file
 
 ## Function definitions
 
