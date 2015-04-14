@@ -5,10 +5,11 @@
 library(reshape)
 library(xlsx)
 
-args<-commandArgs(TRUE)
+#args<-commandArgs(TRUE)
 
-matfile<-c(args[1]) #path to wp10 .tsv file
+#matfile<-c(args[1]) #path to wp10 .tsv file
 
+matfile<-c("/Users/ernesto/projects/wp10_report/bp_wp10_matrix.tsv")
 
 ## Function definitions
 
@@ -76,12 +77,21 @@ TABLE_COLNAMES_STYLE <- CellStyle(wb) + Font(wb, isBold=TRUE) +
 #read tsv file
 DF<-read.table(matfile,header=TRUE,sep = "\t",na.strings=c(""),stringsAsFactors = FALSE)
 
-#simplify Cell.typeQ
+#simplify Cell.type
 DF[,5]<-gsub("CD14-positive, CD16-negative classical monocyte","monocyte",DF[,5])
 DF[,5]<-gsub("CD4-positive, alpha-beta T cell","T_cell",DF[,5])
 
+#Clean_up column names
+names(DF)[9:22]<-gsub("\\.\\.","",names(DF[,9:22]))
+names(DF)[9:22]<-gsub("\\.$","",names(DF[,9:22]))
+names(DF)[9:22]<-gsub("\\.","_",names(DF[,9:22]))
+
 #replace null Cell.type by 'whole_blood'
 DF$Cell.type[is.na(DF$Cell.type)] <- "whole_blood"
+
+#inititalize data.frame for summary sheet
+summary.df<-data.frame(matrix(NA, nrow=4,ncol=15))
+names(summary.df)<-c("Cell.Type",colnames(DF)[9:22])
 
 #iterate over each of the experiments and calculate frequencies
 for (n in 9:22) 
@@ -101,6 +111,9 @@ for (n in 9:22)
   freqs$Assay.type<-rep(colnames(DF)[n],nrow(freqs))
   #reorder columns
   freqs<-freqs[c(1,6,5,4,3,2)]
+  #generate summary sheet
+  summary.df$Cell.Type<-c(freqs$Cell.type)
+  summary.df[colnames(DF)[n]]<- apply(freqs[4:6],1,sum)
   #change columnnames
   colnames(freqs)[1] <- "Cell Type"
   colnames(freqs)[2] <- "Assay Type"
@@ -108,7 +121,7 @@ for (n in 9:22)
   colnames(freqs)[4] <- "Reads"
   colnames(freqs)[5] <- "Alignments"
   colnames(freqs)[6] <- "Analysis"
-  
+ 
   # Create a new sheet in the workbook
   sheet <- createSheet(wb, sheetName = colnames(DF)[n])
   
@@ -134,4 +147,21 @@ for (n in 9:22)
   setColumnWidth(sheet, colIndex=c(1:ncol(freqs)), colWidth=11)
 }
 
+# Add summary.df in a new sheet
+sheet <- createSheet(wb, sheetName = "Summary")
+addDataFrame(summary.df, sheet, startRow=1, startColumn=1, 
+             colnamesStyle = TABLE_COLNAMES_STYLE,
+             rownamesStyle = TABLE_ROWNAMES_STYLE,row.names=FALSE)
+# Change column width
+setColumnWidth(sheet, colIndex=c(1:ncol(summary.df)), colWidth=20)
+
+# Add raw data in a new sheet
+sheet1 <- createSheet(wb, sheetName = "Raw")
+addDataFrame(DF, sheet1, startRow=1, startColumn=1, 
+             colnamesStyle = TABLE_COLNAMES_STYLE,
+             rownamesStyle = TABLE_ROWNAMES_STYLE,row.names=FALSE)
+# Change column width
+setColumnWidth(sheet1, colIndex=c(1:ncol(DF)), colWidth=20)
+
+# save
 saveWorkbook(wb,"bp_wp10.xlsx")
