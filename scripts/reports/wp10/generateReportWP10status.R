@@ -4,10 +4,15 @@
 #R=reads received
 library(reshape)
 library(xlsx)
+library(dplyr)
 
 args<-commandArgs(TRUE)
 
 matfile<-c(args[1]) #path to wp10 .tsv file
+outdir<-c(args[2]) #output dir
+
+#generate output filename
+outfile=paste(outdir,"/","bp-wp10_",Sys.Date(),".xlsx",sep="")
 
 ## Function definitions
 
@@ -75,24 +80,27 @@ TABLE_COLNAMES_STYLE <- CellStyle(wb) + Font(wb, isBold=TRUE) +
 #read tsv file
 DF<-read.table(matfile,header=TRUE,sep = "\t",na.strings=c(""),stringsAsFactors = FALSE)
 
+#drop columns that are not necessary according to Nicole's email
+DF<-select(DF,-Bisulfite.Seq,-H3K36me3,-H3K9me3,-H2A.Zac,-H3K9.14ac)
+
 #simplify Cell.type
 DF[,5]<-gsub("CD14-positive, CD16-negative classical monocyte","monocyte",DF[,5])
 DF[,5]<-gsub("CD4-positive, alpha-beta T cell","T_cell",DF[,5])
 
 #Clean_up column names
-names(DF)[9:22]<-gsub("\\.\\.","",names(DF[,9:22]))
-names(DF)[9:22]<-gsub("\\.$","",names(DF[,9:22]))
-names(DF)[9:22]<-gsub("\\.","_",names(DF[,9:22]))
+names(DF)[9:length(colnames(DF))]<-gsub("\\.\\.","",names(DF[,9:length(colnames(DF))]))
+names(DF)[9:length(colnames(DF))]<-gsub("\\.$","",names(DF[,9:length(colnames(DF))]))
+names(DF)[9:length(colnames(DF))]<-gsub("\\.","_",names(DF[,9:length(colnames(DF))]))
 
 #replace null Cell.type by 'whole_blood'
 DF$Cell.type[is.na(DF$Cell.type)] <- "whole_blood"
 
 #inititalize data.frame for summary sheet
-summary.df<-data.frame(matrix(NA, nrow=4,ncol=15))
-names(summary.df)<-c("Cell.Type",colnames(DF)[9:22])
+summary.df<-data.frame(matrix(NA, nrow=4,ncol=length(colnames(DF)[9:length(colnames(DF))])+1))
+names(summary.df)<-c("Cell.Type",colnames(DF)[9:length(colnames(DF))])
 
 #iterate over each of the experiments and calculate frequencies
-for (n in 9:22) 
+for (n in 9:length(colnames(DF))) 
 {
   #reduce the complexity of labels of 'n' treatment
   elmsv<-unlist(elms<-sapply(DF[,n],reduce))
@@ -137,7 +145,7 @@ for (n in 9:22)
                 title="Alignments=Number of donors for which a certain Cell Type has BAM files available",
                 titleStyle = SUB_TITLE_STYLE)
   
-  # Add a data.framce
+  # Add a data.frame
   addDataFrame(freqs, sheet, startRow=5, startColumn=1, 
                colnamesStyle = TABLE_COLNAMES_STYLE,
                rownamesStyle = TABLE_ROWNAMES_STYLE,row.names=FALSE)
@@ -162,4 +170,4 @@ addDataFrame(DF, sheet1, startRow=1, startColumn=1,
 setColumnWidth(sheet1, colIndex=c(1:ncol(DF)), colWidth=20)
 
 # save
-saveWorkbook(wb,"bp_wp10.xlsx")
+saveWorkbook(wb,outfile)
