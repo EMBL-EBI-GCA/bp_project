@@ -12,7 +12,7 @@ matfile<-c(args[1]) #path to wp10 .tsv file
 outdir<-c(args[2]) #output dir
 
 #generate output filename
-outfile=paste(outdir,"/","bp-wp10_",Sys.Date(),".xlsx",sep="")
+outfile=paste(outdir,"/","bp_wp10_status.xlsx",sep="")
 
 ## Function definitions
 
