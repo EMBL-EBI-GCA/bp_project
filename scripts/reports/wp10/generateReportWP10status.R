@@ -144,7 +144,9 @@ for (n in 9:length(colnames(DF)))
   xlsx.addTitle(sheet, rowIndex=4, 
                 title="Alignments=Number of donors for which a certain Cell Type has BAM files available",
                 titleStyle = SUB_TITLE_STYLE)
-  
+  xlsx.addTitle(sheet, rowIndex=12, 
+                title="Please e-mail blueprint-dcc@ebi.ac.uk if you identify any issues with this report.",
+                titleStyle = SUB_TITLE_STYLE)
   # Add a data.frame
   addDataFrame(freqs, sheet, startRow=5, startColumn=1, 
                colnamesStyle = TABLE_COLNAMES_STYLE,
