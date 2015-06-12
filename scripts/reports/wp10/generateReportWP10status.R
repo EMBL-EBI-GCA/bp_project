@@ -115,6 +115,7 @@ for (n in 9:length(colnames(DF)))
   freqs$total.CellType<-as.numeric(table(DF$Cell.type))
   #add assay_type column
   freqs$Assay.type<-rep(colnames(DF)[n],nrow(freqs))
+  browser()
   #reorder columns
   freqs<-freqs[c(1,6,5,4,3,2)]
   #generate summary sheet
