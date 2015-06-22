@@ -1,12 +1,33 @@
 #Utility to report the number of chros in bigWig and bigBed files
-#NOTE; bigWigInfo and bigBedInfo need to be in $PATH
 use strict;
 use warnings;
 use List::MoreUtils qw(uniq);
+use Getopt::Long;
 
-# index file
-my $ifile=$ARGV[0];
-die("[ERROR] I need and *.index file\n") if !$ifile;
+my $ifile="/nfs/1000g-work/ihec/drop/bp-raw-data/blueprint/results.index";
+my $base_dir="/nfs/1000g-work/ihec/drop/";
+my $bin_dir="/nfs/1000g-work/G1K/work/davidr/pipeline-deps/bin/";
+my $help;
+
+my $usage = "
+  [--help]          this menu
+   --index          .index file containing the paths of the files to be analyzed,
+   --base_dir       base_dir used to construct the paths
+   --bin_dir        dir containing the binaries 
+
+   [USAGE] perl report_number_chros.pl --index /path/to/results.index --base_dir /nfs/1000g-work/ihec/drop/ --bin_dir /nfs/1000g-work/G1K/work/davidr/pipeline-deps/bin/
+";
+
+&GetOptions(
+    'index=s'              => \$ifile,
+    'base_dir=s'           => \$base_dir,
+    'bin_dir=s'            => \$bin_dir
+);
+
+if ($help) {
+    print $usage;
+    exit 0;
+}
 
 #array containing the FILE_TYPEs to be analized
 my @valid=qw(BS_METH_CALL_CNAG BS_METH_SD_CNAG CS_FILTERED_BW CS_WIGGLER DS_FILTERED_BW DS_WIGGLER RNA_SIGNAL_CRG BS_HYPER_METH_BB_CNAG BS_HYPO_METH_BB_CNAG CS_MACS_TRACK_BB CS_MACS_TRACK_BB_WP10 CS_MACS_TRACK_BROAD_BB CS_MACS_TRACK_BROAD_BB_WP10 DNASE_TRACK_BB_NCMLS DS_HOTSPOT_TRACK_BB);
@@ -43,9 +64,9 @@ while(<FH>) {
     #check if file is .bw or .bb
     if ($filepath=~/\.bw$/) {
 	#create command
-	$cmd='bigWigInfo $IHECD/bp-raw-data/'.$filepath;
+	$cmd="$bin_dir/bigWigInfo $base_dir/bp-raw-data/$filepath";
     } elsif ($filepath=~/\.bb$/) {
-	$cmd='bigBedInfo $IHECD/bp-raw-data/'.$filepath;
+	$cmd="$bin_dir/bigBedInfo $base_dir/bp-raw-data/$filepath";
     }
     #execute command
     my $res=`$cmd`;
