@@ -30,19 +30,13 @@ if ($help) {
     exit 0;
 }
 
-#NOTE; bigWigInfo and bigBedInfo need to be in $PATH
-use strict;
-use warnings;
-use List::MoreUtils qw(uniq);
-
-# index file
-my $ifile=$ARGV[0];
-die("[ERROR] I need and *.index file\n") if !$ifile;
-
 #array containing the FILE_TYPEs to be analized
-my @valid=qw(BS_METH_CALL_CNAG BS_METH_SD_CNAG CS_FILTERED_BW CS_WIGGLER DS_FILTERED_BW DS_WIGGLER RNA_SIGNAL_CRG BS_HYPER_METH_BB_CNAG BS_HYPO_METH_BB_CNAG CS_MACS_TRACK_BB CS_MACS_TRACK_BB_WP10 CS_MACS_TRACK_BROAD_BB CS_MACS_TRACK_BROAD_BB_WP10 DNASE_TRACK_BB_NCMLS DS_HOTSPOT_TRACK_BB);
+my @valid_files=qw(CHIP_MACS2_BROAD_BB CHIP_WIGGLER CHIP_MACS2_BB);
 
-my %valid = map { $_ => 1 } @valid;
+#array containing chros to be considered for a file to be valid
+my @valid_chros= qw(chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY chrM);
+
+my %valid = map { $_ => 1 } @valid_files;
 
 
 open FILE,"<$ifile" or die("Cant open $ifile:$!\n");
@@ -55,7 +49,7 @@ my $file_ix = List::MoreUtils::first_index {$_ eq 'FILE'} @fields;
 my $file_type_ix = List::MoreUtils::first_index {$_ eq 'FILE_TYPE'} @fields;
 
 #header
-print "#file\tchrNo\n";
+print "#file\tchrNo\tvalid\n";
 
 my $first=0;
 open FH,"<$ifile" or die("Cant open $ifile:$!\n");
@@ -74,18 +68,24 @@ while(<FH>) {
     #check if file is .bw or .bb
     if ($filepath=~/\.bw$/) {
 	#create command
-	$cmd="$bin_dir/bigWigInfo $base_dir/bp-raw-data/$filepath";
+	$cmd="$bin_dir/bigWigInfo -chroms $base_dir/bp-raw-data/$filepath";
     } elsif ($filepath=~/\.bb$/) {
-	$cmd="$bin_dir/bigBedInfo $base_dir/bp-raw-data/$filepath";
-	$cmd='bigWigInfo $IHECD/bp-raw-data/'.$filepath;
-    } elsif ($filepath=~/\.bb$/) {
-	$cmd='bigBedInfo $IHECD/bp-raw-data/'.$filepath;
+	$cmd="$bin_dir/bigBedInfo -chroms $base_dir/bp-raw-data/$filepath";
     }
     #execute command
     my $res=`$cmd`;
-    #get chromosome count from $res
-    my $chr_count=$1 if $res=~/chromCount: (\d+)/;
-    print $filepath,"\t",$chr_count,"\n";
+    #parse output
+    my $valid=1;
+    my @lines=split/\s/,$res;
+    my %chros= map { $_ => 1 } (grep {/chr/} @lines);
+    #check if this file has all the chros in @valid_chros
+    foreach my $chr (@valid_chros) {
+	if (!exists($chros{$chr})) {
+	    $valid=0;
+	}
+    }
+    my $number=scalar(keys(%chros));
+    print "$filepath\t$number\t$valid\n";
 }
 close FH;
 
