@@ -1,4 +1,5 @@
-#Utility to report the number of chros in bigWig and bigBed files
+#Utility to report the number of chros and what chros we have in bigWig
+#and bigBed files
 
 use strict;
 use warnings;
@@ -31,10 +32,10 @@ if ($help) {
 }
 
 #array containing the FILE_TYPEs to be analized
-my @valid_files=qw(CHIP_MACS2_BROAD_BB CHIP_WIGGLER CHIP_MACS2_BB);
+my @valid_files=qw(CHIP_MACS2_BROAD_BB CHIP_WIGGLER CHIP_MACS2_BB DNASE_HOTSPOT_BB DNASE_WIGGLER);
 
 #array containing chros to be considered for a file to be valid
-my @valid_chros= qw(chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY chrM);
+my @valid_chros= qw(chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX);
 
 my %valid = map { $_ => 1 } @valid_files;
 
@@ -48,8 +49,10 @@ my @fields=split/\t/,$header;
 my $file_ix = List::MoreUtils::first_index {$_ eq 'FILE'} @fields;
 my $file_type_ix = List::MoreUtils::first_index {$_ eq 'FILE_TYPE'} @fields;
 
+my %count_chros;
+
 #header
-print "#file\tchrNo\tvalid\n";
+print "#file\tchrNo\tmissing\ttype\n";
 
 my $first=0;
 open FH,"<$ifile" or die("Cant open $ifile:$!\n");
@@ -75,17 +78,26 @@ while(<FH>) {
     #execute command
     my $res=`$cmd`;
     #parse output
-    my $valid=1;
     my @lines=split/\s/,$res;
     my %chros= map { $_ => 1 } (grep {/chr/} @lines);
+    my $missing_chr="";
     #check if this file has all the chros in @valid_chros
     foreach my $chr (@valid_chros) {
 	if (!exists($chros{$chr})) {
-	    $valid=0;
+	    $missing_chr.="$chr,";
+	    $count_chros{$chr}++;
 	}
     }
+    $missing_chr=~s/,$//;
+    $missing_chr="OK" if $missing_chr eq "";
     my $number=scalar(keys(%chros));
-    print "$filepath\t$number\t$valid\n";
+    print "$filepath\t$number\t$missing_chr\t$fields[$file_type_ix]\n";
 }
 close FH;
 
+my @sorted_chros=sort {$count_chros{$b}<=>$count_chros{$a}} keys %count_chros;
+
+#print counts per chromosome
+foreach my $chr (@sorted_chros) {
+    print "$chr\t$count_chros{$chr}\n";
+}
