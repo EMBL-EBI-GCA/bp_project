@@ -32,7 +32,17 @@ if ($help) {
 }
 
 #array containing the FILE_TYPEs to be analized
-my @valid_files=qw(CHIP_MACS2_BROAD_BB CHIP_WIGGLER CHIP_MACS2_BB DNASE_HOTSPOT_BB DNASE_WIGGLER);
+my @valid_files=qw(
+CHIP_MACS2_BB
+CHIP_MACS2_BED
+CHIP_MACS2_BROAD_BB
+CHIP_MACS2_BROAD_BED
+CHIP_WIGGLER
+DNASE_HOTSPOT_BB
+DNASE_HOTSPOT_BED
+DNASE_HOTSPOT_PEAK_BED
+DNASE_WIGGLER
+);
 
 #array containing chros to be considered for a file to be valid
 my @valid_chros= qw(chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX);
