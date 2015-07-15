@@ -1,0 +1,18 @@
+# File sanity
+This is a repository of code to check the integrity of the Blueprint files that are part of the release
+
+We do not expect this code to be generally useful but if you have any questions about the code you find here or our processes managing the Blueprint data please email [blueprint-info@ebi.ac.uk](mailto:blueprint-info@ebi.ac.uk)
+
+## analysis_BED_files.pl
+Script to check sanity of .bed, .bb and MAC'S xls files. For August 2015 release these will correspond to the following file types:
+CHIP_MACS2_BROAD_BED
+CHIP_MACS2_BED
+CHIP_MACS2_BB
+CHIP_MACS2_BROAD_BB
+DNASE_HOTSPOT_BB
+DNASE_HOTSPOT_BED
+DNASE_HOTSPOT_PEAK_BED
+
+Edit @valid_files array to control the file types to be analyzed
+
+This script will produce the following information:
