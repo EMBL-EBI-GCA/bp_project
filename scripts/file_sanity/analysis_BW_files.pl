@@ -36,6 +36,7 @@ if ($help || !$ifile || !$base_dir || !$bin_dir) {
 my @valid_files=qw(
 CHIP_WIGGLER
 DNASE_WIGGLER
+RNA_SIGNAL_STAR_CRG
 );
 
 #array containing chros to be checked
@@ -82,7 +83,7 @@ while(<FH>) {
     foreach my $chr (@check_chros) {
 	if (!exists($chros{$chr})) {
 	    $missing_chr.="$chr,";
-	    $count_chros{$chr}++;
+	    $count_chros{$fields[$file_type_ix]}{$chr}++;
 	}
     }
     $missing_chr=~s/,$//;
@@ -92,14 +93,14 @@ while(<FH>) {
 }
 close FH;
 
-
-my @sorted_chros=sort {$count_chros{$b}<=>$count_chros{$a}} keys %count_chros;
-
 open OUTFH,">report_chros.bw.txt";
-
 print OUTFH "\n##Number of files missing a certain chromosome:\n";
-foreach my $chr (@sorted_chros) {
-    print OUTFH "$chr\t$count_chros{$chr}\n";
+print OUTFH "#type\tchr\tnumber\n";
+foreach my $ftype (keys %count_chros) {
+    my @sorted_chros=sort {$count_chros{$ftype}{$b}<=>$count_chros{$ftype}{$a}} keys %{$count_chros{$ftype}};
+    foreach my $chr (@sorted_chros) {
+	print OUTFH "$ftype\t$chr\t$count_chros{$ftype}{$chr}\n";
+    }
 }
 
 close OUTFH;

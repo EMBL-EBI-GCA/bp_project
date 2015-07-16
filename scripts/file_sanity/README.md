@@ -61,6 +61,7 @@ Where we can see that for each canonical chromosome, there are 8 files of type C
 Script to check sanity of .bw files. Currently, these are the file types that are verified:
 - CHIP_WIGGLER
 - DNASE_WIGGLER
+- RNA_SIGNAL_STAR_CRG
 
 Edit @valid_files array to control the file types to be analyzed
 
