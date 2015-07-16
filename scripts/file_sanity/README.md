@@ -11,7 +11,6 @@ Script to check sanity of .bed, .bb and MAC'S xls files. Currently, these are th
 - CHIP_MACS2_BROAD_BB
 - DNASE_HOTSPOT_BB
 - DNASE_HOTSPOT_BED
-- DNASE_HOTSPOT_PEAK_BED
 
 Edit @valid_files array to control the file types to be analyzed
 
