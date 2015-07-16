@@ -77,6 +77,6 @@ This script will produce the following information:
 ...
 ```
 Where the 2nd column is the total number of chros having peaks in a particular file
-The 3rd column will be OK if all the chromosomes that are in @check_chros_array are present in the file
+The 3rd column will be OK if all the chromosomes that are in @check_chros_array are present in the file. If not,the chromosomes within the @check_chros array that are not present will be printed
 
 This script will also generate a file named report_chros.bw.txt, containing a report on the number of files missing peaks in the chromosomes specified in the @check_chros array
