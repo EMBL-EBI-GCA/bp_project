@@ -42,6 +42,7 @@ CHIP_MACS2_BB
 CHIP_MACS2_BROAD_BB
 DNASE_HOTSPOT_BB
 DNASE_HOTSPOT_BED
+RNA_CONTIGS_STAR_CRG
 );
 my %valid = map { $_ => 1 } @valid_files;
 
@@ -75,6 +76,9 @@ foreach my $key (keys %$file_hash) {
 	    $res=`$cmd`;
 	} elsif ($suffix eq '.gz') {   
 	    my $cmd="zcat $base_dir/bp-raw-data/$fpath |cut -f1 |sort |uniq -c";
+	    $res=`$cmd`;
+	} elsif ($suffix eq '.bed') {
+	    my $cmd="cat $base_dir/bp-raw-data/$fpath |cut -f1 |sort |uniq -c";
 	    $res=`$cmd`;
 	}
 	$res=~s/^\s+//g;

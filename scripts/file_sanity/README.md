@@ -11,6 +11,7 @@ Script to check sanity of .bed, .bb and MAC'S xls files. Currently, these are th
 - CHIP_MACS2_BROAD_BB
 - DNASE_HOTSPOT_BB
 - DNASE_HOTSPOT_BED
+- RNA_CONTIGS_STAR_CRG
 
 Edit @valid_files array to control the file types to be analyzed
 
@@ -22,10 +23,12 @@ This script will produce the following information:
 /path/to/file/fileA.bb	CHIP_MACS2_BROAD_BB	OK
 ```
 
-Where the 3rd column will be OK if number of peaks per chr in the comparison among the different files (fileX.bed.gz;fileX.xls.gz;fileX.bb) for a specific sample-experiment combination is the same.
-3rd column will say EMPTY if no peaks at all were identified for a specifig sample-experiment combination
+Where the 3rd column will be OK if number of features per chr in the comparison among the different files (fileX.bed.gz;fileX.xls.gz;fileX.bb) for a specific sample-experiment combination is the same.
+3rd column will say EMPTY if no features at all were identified for a specifig sample-experiment combination
+In the case of DNASE_HOTSPOT_BB
+- DNASE_HOTSPOT_BED
 
-This script will also generate a file named report_chros.bed.txt, containing a report of the frequency of files having peaks in each chromosome for each particular file type.
+This script will also generate a file named report_chros.bed.txt, containing a report of the frequency of files having features in each chromosome for each particular file type.
 For example, one example of a report_chros.bed.txt showing a possible issue that should be checked would be:
 ```
 #type	chr	number
@@ -55,7 +58,7 @@ CHIP_MACS2_BROAD_BB	chr13	8
 CHIP_MACS2_BROAD_BB	chr19	8
 ...
 ```
-Where we can see that for each canonical chromosome, there are 8 files of type CHIP_MACS2_BROAD_BB that have peaks. This is not the case for chr1, where only one file has peaks in this chromosome
+Where we can see that for each canonical chromosome, there are 8 files of type CHIP_MACS2_BROAD_BB that have features. This is not the case for chr1, where only one file has fetures in this chromosome
 
 ## analysis_BW_files.pl
 Script to check sanity of .bw files. Currently, these are the file types that are verified:
