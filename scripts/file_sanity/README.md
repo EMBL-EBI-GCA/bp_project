@@ -89,4 +89,6 @@ This script is used to run ``ValidateSamFile.jar`` from Picard on the different 
 
 By setting the ``@restrict`` array one can set the tests that ``ValidateSamFile.jar`` should not do. By default: ``INVALID_VERSION_NUMBER,INVALID_MAPPING_QUALITY``
 
+In order to parse output files for ``ValidateSamFile.jar`` errors use:
+cat output.name |grep ERROR | sed -e 's/.*, \(.*\)/\1/' |wc -l
 
