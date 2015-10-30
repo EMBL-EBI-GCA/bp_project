@@ -88,7 +88,6 @@ my $twig = XML::Twig->new(
                                          },
                                    'EXPERIMENT/EXPERIMENT_ATTRIBUTES/EXPERIMENT_ATTRIBUTE[string(TAG)="EXPERIMENT_TYPE"]' => 
                                       sub{ my ($twig, $e) = @_;
-                                       
                                            die $exp_id unless exists $$exp_id_list{$exp_id}{NEW_EXP_TYPE};
                                            my $new_exp_type = $$exp_id_list{$exp_id}{NEW_EXP_TYPE};
 
@@ -96,12 +95,46 @@ my $twig = XML::Twig->new(
                                              if ($child->name eq 'VALUE'){
                                                 my $value = $child->text;
 
-                                                warn "changing exp type for $exp_id, from: $value to: $new_exp_type",$/;
+                                                warn "changing exp type for $exp_id, from: $value to: $new_exp_type",$/
+                                                  unless $value eq $new_exp_type;
                                                 $child->set_text( $new_exp_type ); 
                                               }
                                             }
                                          },
-                                         }, 
+                                   'EXPERIMENT/EXPERIMENT_ATTRIBUTES/EXPERIMENT_ATTRIBUTE[string(TAG)="CHIP_ANTIBODY"]' => 
+                                      sub{ my ($twig, $e) = @_;
+                                           
+                                           die $exp_id,$/ unless exists $$exp_id_list{$exp_id}{NEW_CHIP_ANTOBODY};
+                                           my $new_chip_antibody = $$exp_id_list{$exp_id}{NEW_CHIP_ANTOBODY};
+            
+                                           foreach my $child ($e->children){
+                                             if ($child->name eq 'VALUE'){
+                                                my $value = $child->text;
+ 
+                                                warn "changing CHIP Antibody for $exp_id, from: $value to: $new_chip_antibody",$/
+                                                  unless $value eq $new_chip_antibody;
+
+                                                $child->set_text( $new_chip_antibody );
+                                             }
+                                           }
+                                         },
+                                   'EXPERIMENT/EXPERIMENT_ATTRIBUTES/EXPERIMENT_ATTRIBUTE[string(TAG)="CHIP_ANTIBODY_LOT"]' =>
+                                      sub{ my ($twig, $e) = @_;
+                                           die $exp_id,$/ unless exists $$exp_id_list{$exp_id}{NEW_ANTIBODY_LOT};
+                                           my $new_antibody_lot = $$exp_id_list{$exp_id}{NEW_ANTIBODY_LOT};
+        
+                                           foreach my $child ($e->children){
+                                             if ($child->name eq 'VALUE'){
+                                                my $value = $child->text;
+
+                                                warn "changing ChIP antibody lot for $exp_id, from: $value to: $new_antibody_lot",$/
+                                                   unless $value eq $new_antibody_lot;
+
+                                                $child->set_text( $new_antibody_lot );
+                                             }
+                                           }
+                                         },  
+                                       }, 
              pretty_print             => 'indented',
              keep_encoding            => 1,
              twig_print_outside_roots => 0,        # print the rest
@@ -111,6 +144,7 @@ my $xml_sth = $era->dbc->prepare("select xmltype.getclobval(experiment_xml) xml 
 
 print '<EXPERIMENT_SET>'.$/;
 foreach my $exp_id ( keys %{ $exp_id_list } ) {    
+
   $xml_sth->execute( $exp_id );
   my $xr = $xml_sth->fetchrow_arrayref();
   my ($xml) = @$xr;
@@ -133,24 +167,48 @@ sub get_ega_id {
 sub get_list {
   my ( $file ) = @_;
   my %id_hash;
-   
+  my @header;
+
   open my $fh ,'<', $file;
   while ( <$fh> ){
     chomp;
     next if /^#/;
 
-    my ($exp_id, $new_sample_alias, $new_exp_type) = split '\t';
-    die $exp_id,$/ if !$exp_id || !$new_sample_alias || !$new_exp_type;
 
-    my $ega_sample_id = get_ega_id(  $new_sample_alias, 'sample', 'alias');
-    my $ega_exp_id = get_ega_id( $exp_id, 'experiment', 'id');
+    if( @header ){
+      my @vals = split "\t";
+      die join("\t",@vals),$/ unless scalar @vals==5;
+
+      my %val_hash;
+      @val_hash{ @header } = @vals;
+      
+      my $exp_id            = $val_hash{EXPERIMENT_ID};
+      my $new_sample_alias  = $val_hash{NEW_SAMPLE_ALIAS};
+      my $new_exp_type      = $val_hash{NEW_EXPERIMENT_TYPE};
+      my $new_chip_antibody = $val_hash{NEW_CHIP_ANTIBODY};
+      my $new_antibody_lot  = $val_hash{NEW_CHIP_ANTIBODY_LOT};
+
+      die $exp_id,$/ unless $exp_id;
+      die $new_sample_alias,$/ unless $new_sample_alias;
+      die $new_exp_type,$/ unless $new_exp_type;
+      die $new_chip_antibody,$/ unless $new_chip_antibody;
+      die $new_antibody_lot,$/ unless $new_antibody_lot;
+
+      my $ega_sample_id = get_ega_id(  $new_sample_alias, 'sample', 'alias');
+      my $ega_exp_id    = get_ega_id( $exp_id, 'experiment', 'id');
     
-    $new_exp_type = 'Histone ' .$new_exp_type unless $new_exp_type =~ /^Histone/i;
+      $new_exp_type = 'Histone ' .$new_exp_type unless $new_exp_type =~ /^Histone/i;
 
-    $id_hash{ $exp_id }{NEW_SAMPLE_ALIAS}  = $new_sample_alias;
-    $id_hash{ $exp_id }{NEW_EXP_TYPE}      = $new_exp_type;
-    $id_hash{ $exp_id }{NEW_SAMPLE_EGA_ID} = $ega_sample_id;
-    $id_hash{ $exp_id }{EXPERIMENT_EGA_ID} = $ega_exp_id;
+      $id_hash{ $exp_id }{NEW_SAMPLE_ALIAS}  = $new_sample_alias;
+      $id_hash{ $exp_id }{NEW_EXP_TYPE}      = $new_exp_type;
+      $id_hash{ $exp_id }{NEW_CHIP_ANTOBODY} = $new_chip_antibody;
+      $id_hash{ $exp_id }{NEW_ANTIBODY_LOT}  = $new_antibody_lot;
+      $id_hash{ $exp_id }{NEW_SAMPLE_EGA_ID} = $ega_sample_id;
+      $id_hash{ $exp_id }{EXPERIMENT_EGA_ID} = $ega_exp_id;
+    }
+    else {
+      @header = split "\t";
+    }
   }
   close( $fh );
   return \%id_hash;
@@ -162,9 +220,9 @@ This script generates xml file for EGA experiment entries with modified samples 
 
 Options:
 
- -infile, tab-delimited file listing the ERA experiment id, new sample alias and new experiment type (histone marks name)
+ -infile, tab-delimited file listing the ERA experiment id, new sample alias, new experiment type (histone marks name) & ChIP antibody details
 
- e.g EXPERIMENT_ID <TAB> NEW_SAMPLE_ALIAS <TAB> NEW_EXPERIMENT_TYPE 
+ e.g EXPERIMENT_ID <TAB> NEW_SAMPLE_ALIAS <TAB> NEW_EXPERIMENT_TYPE <TAB> NEW_CHIP_ANTIBODY <TAB> NEW_CHIP_ANTIBODY_LOT
 
 Parameters ERAPRO connection:
 
