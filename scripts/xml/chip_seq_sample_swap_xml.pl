@@ -31,7 +31,6 @@ my $twig = XML::Twig->new(
                                           my $acc_id = $e->att('accession');
                                           die $acc_id unless exists $$exp_id_list{$acc_id}{EXPERIMENT_EGA_ID};
                                           my $ega_id = $$exp_id_list{$acc_id}{EXPERIMENT_EGA_ID};
-                                          print $acc_id,"\t",$ega_id,$/;
                                           $e->set_att( accession => $ega_id );
                                           $e->print(); 
                                        }},
@@ -188,11 +187,9 @@ sub get_list {
       my $new_chip_antibody = $val_hash{NEW_CHIP_ANTIBODY};
       my $new_antibody_lot  = $val_hash{NEW_CHIP_ANTIBODY_LOT};
 
-      die $exp_id,$/ unless $exp_id;
-      die $new_sample_alias,$/ unless $new_sample_alias;
-      die $new_exp_type,$/ unless $new_exp_type;
-      die $new_chip_antibody,$/ unless $new_chip_antibody;
-      die $new_antibody_lot,$/ unless $new_antibody_lot;
+      foreach my $key ( @header ){
+        die $exp_id,$/ unless $val_hash{$key};
+      }
 
       my $ega_sample_id = get_ega_id(  $new_sample_alias, 'sample', 'alias');
       my $ega_exp_id    = get_ega_id( $exp_id, 'experiment', 'id');
