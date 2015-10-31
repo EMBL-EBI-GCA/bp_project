@@ -294,7 +294,7 @@ sub check_incoming_and_manifest_files {
   my $manifest_files_count = scalar keys %{ $files_md5_hash };
   my $incoming_files_count = scalar @{ $host_files }; 
 
-  throw( "File numbers are not matching for md5 manifest and incoming dir" ) 
+  throw( "File numbers are not matching for md5 manifest: $manifest_files_count and incoming dir: $incoming_files_count" ) 
           unless $manifest_files_count eq $incoming_files_count;
 
   my %incoming_hash;                                                                      ## filename hash for incoming files

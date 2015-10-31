@@ -11,7 +11,7 @@ use ReseqTrack::Tools::Exception qw(throw warning);
 use ReseqTrack::Tools::AttributeUtils;
 use File::Copy;
 use File::Path;
-use File::Basename qw(fileparse basename);
+use File::Basename;
 use Getopt::Long;
 use autodie;
 
@@ -32,8 +32,8 @@ my $aln_base_dir         = '/nfs/1000g-work/G1K/work/avikd/test_dir/test_file_re
 my $vcf_base_dir         = '/nfs/1000g-work/G1K/work/avikd/test_dir/test_file_release_pipe//base_dir/vcf';
 my $results_base_dir     = '/nfs/1000g-work/G1K/work/avikd/test_dir/test_file_release_pipe//base_dir/results';
 my $species              = 'homo sapiens';
-my $freeze_date          = '20150622';
-my $metadata_file        = '/nfs/1000g-work/ihec/work/davidr/cron/run_meta_data.tab';
+my $freeze_date          = undef;
+my $metadata_file        = '/nfs/1000g-work/ihec/work/davidr/cron/meta_data.tab';
 my $validate_file        = 0;
 my $assign_type          = 0;
 my $check_path           = 0;
@@ -43,6 +43,8 @@ my $genome_version_file;                       ## use a file to set individual g
 my $attribute_name       = 'genome_version';
 my $collection_tag       = 'experiment_id';
 my $move_file            = 0;
+my $strict_check         = 0;
+my $alt_sample_name      = undef;
 
 &GetOptions(
         'dbhost=s'              => \$dbhost,
@@ -56,10 +58,10 @@ my $move_file            = 0;
         'incoming_md5_type=s'   => \$incoming_md5_type,
         'md5_manifest_tag=s'    => \$incoming_md5_tag,
         'metadata_file=s'       => \$metadata_file,
-        'validate_file'         => \$validate_file,
-        'assign_type'           => \$assign_type,
-        'check_path'            => \$check_path,
-        'update_from_manifest'  => \$update_from_manifest,
+        'validate_file!'        => \$validate_file,
+        'assign_type!'          => \$assign_type,
+        'check_path!'           => \$check_path,
+        'update_from_manifest!' => \$update_from_manifest,
         'genome_version=s'      => \$genome_version,
         'genome_version_file=s' => \$genome_version_file,
         'genome_attribute=s'    => \$attribute_name,
@@ -67,7 +69,10 @@ my $move_file            = 0;
         'aln_base_dir=s'        => \$aln_base_dir,
         'vcf_base_dir=s'        => \$vcf_base_dir,
         'results_base_dir=s'    => \$results_base_dir,
-        'move_file'             => \$move_file,
+        'move_file!'            => \$move_file,
+        'strict_check!'         => \$strict_check,
+        'freeze_date=s'         => \$freeze_date,
+        'alt_sample_name=s'     => \$alt_sample_name,
        );
 
 my $db = ReseqTrack::DBSQL::DBAdaptor->new(
@@ -84,26 +89,59 @@ $db->dbc->disconnect_when_inactive(1);
 if ( $validate_file ) {
   throw("genome version is required") if !$genome_version && !$genome_version_file;
 
-  validate_foreign_files( $db,            $incoming_file_type, $incoming_md5_type,  $incoming_md5_tag, 
-                          $withdrawn_dir, $host_name,          $internal_file_type, $update_from_manifest  );
-
+  if ( $strict_check ){ 
+    validate_foreign_files( $db,            $incoming_file_type, $incoming_md5_type,  $incoming_md5_tag, 
+                            $withdrawn_dir, $host_name,          $internal_file_type, $update_from_manifest  );
+  }
+  else {
+   my $ha = $db->get_HostAdaptor;
+   my $foreign_hosts = $ha->fetch_all_remote;
+   
+   foreach my $f_host ( @{ $foreign_hosts } ){
+     my $f_host_name = $f_host->name;
+     add_dropbox_path( $db, $f_host_name, $incoming_file_type ); 
+   }
+ }
+  
   add_genome_version( $db, $incoming_file_type, $genome_version, $attribute_name, $genome_version_file );
 }
 
 assign_file_types( $db, $incoming_file_type ) if $assign_type;
 
-my %derive_path_options = ( aln_base_dir     => $aln_base_dir,
-                            vcf_base_dir     => $vcf_base_dir,
-                            results_base_dir => $results_base_dir,
-                            species          => $species,
-                            freeze_date      => $freeze_date,
-                            genome_attribute => $attribute_name,
-                            collection_tag   => $collection_tag,
-                            move_file        => $move_file,
-                            local_host_name  => $host_name,
-                          );
+#my %derive_path_options = ( aln_base_dir     => $aln_base_dir,
+#                            vcf_base_dir     => $vcf_base_dir,
+#                            results_base_dir => $results_base_dir,
+#                            species          => $species,
+#                            freeze_date      => $freeze_date,
+#                            genome_attribute => $attribute_name,
+#                            collection_tag   => $collection_tag,
+#                            move_file        => $move_file,
+#                            local_host_name  => $host_name,
+#                            alt_sample_name => $alt_sample_name,
+#                          );
 
-build_dest_path( $db, $metadata_file, \%derive_path_options ) if $check_path;
+if ( $check_path ){
+  throw("freeze_date required") unless $freeze_date;
+
+  my %derive_path_options = ( aln_base_dir      => $aln_base_dir,
+                              vcf_base_dir      => $vcf_base_dir,
+                              results_base_dir  => $results_base_dir,
+                              species           => $species,
+                              freeze_date       => $freeze_date,
+                              genome_attribute  => $attribute_name,
+                              collection_tag    => $collection_tag,
+                              move_file         => $move_file,
+                              local_host_name   => $host_name,
+                              alt_sample_name   => $alt_sample_name,
+                              incoming_type     => $incoming_file_type,
+                              incoming_md5_type => $incoming_md5_type,
+                              internal_type     => $internal_file_type,
+                            );  
+
+
+  build_dest_path( $db, $metadata_file, \%derive_path_options );
+
+}
 
 
 sub validate_foreign_files {
@@ -289,7 +327,16 @@ sub add_dropbox_path {
   foreach my $file ( @{$files} ){
     my $file_type = $file->type;
     my $file_path = $file->name;
-    next unless $file_type eq $internal_file_type;
+    my $file_md5  = $file->md5;
+
+    next unless $file_type eq $internal_file_type;  ## adding path to selective file types
+    next unless $file_md5;                          ## skipping for files loaded in database without md5    
+
+    if ( $file_path =~ /^\// ){
+      my $dirname = dirname( $file_path );
+      next if -d $dirname;                          ## skip adding dropbox path if its already absolute paths
+      warning("Skipping file $file_path");    
+    }
 
     my $new_file_path = $host_dir. '/'. $file_path;
     $new_file_path =~ s{//}{/}g;
@@ -351,7 +398,7 @@ sub add_genome_version {
   my $fa = $db->get_FileAdaptor;
   my $files = $fa->fetch_by_type( $incoming_file_type );  
 
-  my $file_info = read_genome_version_file( $genome_version_file )
+  my $file_info = get_hash_from_file( $genome_version_file )
                                           if $genome_version_file;
 
   my @statistics;
@@ -378,15 +425,16 @@ sub add_genome_version {
   }
 }
 
-sub read_genome_version_file {
-  my ( $genome_version_file ) = @_;
+#sub read_genome_version_file {
+sub get_hash_from_file {
+  my ( $file ) = @_;
   my %file_info;
 
-  open my $fh, '<', $genome_version_file;
+  open my $fh, '<', $file;
   while ( <$fh> ){
     chomp;
     my @vals = split'\t';
-    throw("expecting 2 columns , got ".scalar @vals." in $genome_version_file") unless scalar @vals == 2;
+    throw("expecting 2 columns , got ".scalar @vals." in $file") unless scalar @vals == 2;
     $file_info{ $vals[0] }= $vals[1];
   }
   close( $fh );
@@ -425,17 +473,24 @@ sub build_dest_path {
   my $destination;
   my $collection_name;
  
-  my $aln_base_dir     = $$derive_path_options{aln_base_dir}; 
-  my $vcf_base_dir     = $$derive_path_options{vcf_base_dir}; 
-  my $results_base_dir = $$derive_path_options{results_base_dir};
-  my $meta_data        = get_meta_data( $metadata_file );
-  my $species          = $$derive_path_options{species};
-  my $freeze_date      = $$derive_path_options{freeze_date};
-  my $genome_attribute = $$derive_path_options{genome_attribute};
-  my $collection_tag   = $$derive_path_options{collection_tag};
-  my $move_file        = $$derive_path_options{move_file};
-  my $local_host_name  = $$derive_path_options{local_host_name};
+  my $aln_base_dir      = $$derive_path_options{aln_base_dir}; 
+  my $vcf_base_dir      = $$derive_path_options{vcf_base_dir}; 
+  my $results_base_dir  = $$derive_path_options{results_base_dir};
+  my $meta_data         = get_meta_data( $metadata_file );
+  my $species           = $$derive_path_options{species};
+  my $freeze_date       = $$derive_path_options{freeze_date};
+  my $genome_attribute  = $$derive_path_options{genome_attribute};
+  my $collection_tag    = $$derive_path_options{collection_tag};
+  my $move_file         = $$derive_path_options{move_file};
+  my $local_host_name   = $$derive_path_options{local_host_name};
+  my $alt_sample_name   = $$derive_path_options{alt_sample_name};
+  my $incoming_type     = $$derive_path_options{incoming_type};
+  my $incoming_md5_type = $$derive_path_options{incoming_md5_type};
+  my $internal_type     = $$derive_path_options{internal_type};
   my $genome_version;
+
+  my $alt_sample_hash = {};
+  $alt_sample_hash = get_hash_from_file( $alt_sample_name ) if $alt_sample_name;
 
   warn ( "files will be moved to destination directory") if $move_file;
 
@@ -456,6 +511,9 @@ sub build_dest_path {
        my $f_file_type = $file_object->type;
        my $f_file_md   = $file_object->{md5};
        next unless $f_file_md;
+       next if $f_file_type eq $incoming_type;
+       next if $f_file_type eq $incoming_md5_type;
+       next if $f_file_type eq $internal_type;         ## skipping incoming and internal files 
      
        my $file_attributes = $file_object->attributes;
        my ( $attribute ) = grep { $_->attribute_name eq $genome_attribute } @$file_attributes;
@@ -478,6 +536,7 @@ sub build_dest_path {
                        'genome_version'   => $genome_version,
                        'freeze_date'      => $freeze_date,
                        'collection_tag'   => $collection_tag,
+                       alt_sample_hash    => $alt_sample_hash,
                     );
 
        if ( $f_host_name eq 'CNAG' ) { 
@@ -487,7 +546,7 @@ sub build_dest_path {
         ( $destination, $collection_name ) = derive_CRG_path(  \%option  );
        }
        elsif( $f_host_name eq 'WTSI' ) {
-        ( $destination, $collection_name ) = derive_NCMLS_path( \%option );
+        ( $destination, $collection_name ) = derive_WTSI_path( \%option );
        }
        elsif( $f_host_name eq 'NCMLS' ){
         ( $destination, $collection_name ) = derive_NCMLS_path( \%option );
@@ -570,6 +629,7 @@ sub derive_CNAG_path {
   my $freeze_date      = $$options{freeze_date}      or throw( 'missing freeze date' );       
   my $genome_version   = $$options{genome_version}   or throw( 'missing genome version' );
   my $collection_tag   = $$options{collection_tag}   or throw( 'missing collection tag' );
+  my $alt_sample_hash  = $$options{alt_sample_hash};
   my $pipeline_name;
   my $output_dir;
   my $experiment_type;
@@ -583,7 +643,7 @@ sub derive_CNAG_path {
         $sample_id = $file_fields[0];
         $suffix    = $file_fields[-1];
           
-
+       $sample_id = $$alt_sample_hash{ $sample_id } if exists $$alt_sample_hash{ $sample_id };
        $meta_data_entry = $meta_data->{$sample_id};
 
        throw( "No metadata for sample $sample_id" ) if ( $sample_id && !$meta_data_entry );
@@ -594,24 +654,31 @@ sub derive_CNAG_path {
        $experiment_type = 'BS';
        $output_dir = $aln_base_dir;                                              ### reset CNAG experiment type    
   }
-  elsif ( $file_object->type eq 'BS_VCF_CNAG' ){
+  elsif ( $file_object->type eq 'BS_BCF_CNAG' ||
+          $file_object->type eq 'BS_BCF_CSI_CNAG' ){
+
     my @file_fields = split '\.',  $filename;
     $sample_id = $file_fields[0];
-    $suffix    = $file_fields[-1] eq 'gz' ? 'vcf.gz' : 'vcf';
-
+    $suffix    = $file_fields[-1] eq 'gz' ? 'bcf.gz' : 'bcf';
+    $suffix   .= '.csi' if $file_object->type eq 'BS_BCF_CSI_CNAG';
+    
+    $sample_id = $$alt_sample_hash{ $sample_id } if exists $$alt_sample_hash{ $sample_id };
     $meta_data_entry = $meta_data->{$sample_id};
     throw( "No metadata for sample $sample_id" ) if ( $sample_id && !$meta_data_entry );
     $meta_data_entry = get_experiment_names( $meta_data_entry );
    
     $pipeline_name = 'gem_cnag_bs';
-    $experiment_type = 'BS'; 
+    $experiment_type = 'WGBS'; 
     $output_dir = $vcf_base_dir; 
   }
   else {
-       ( $sample_id, $experiment_type, $pipeline_name, $freeze_date, $suffix ) = ( $filename =~ /(\S+?)\.(\S+?)\.(\S+?)\.(\S+?)\.(\S+)/ ); 
-       $meta_data_entry = $meta_data->{$sample_id};
-       throw( "No metadata for sample $sample_id" ) if ( $sample_id && !$meta_data_entry );
-       $output_dir =  $results_base_dir;
+    my $file_freeze_date;
+    ( $sample_id, $experiment_type, $pipeline_name, $file_freeze_date, $suffix ) = ( $filename =~ /(\S+?)\.(\S+?)\.(\S+?)\.(\S+?)\.(\S+)/ ); 
+       
+    $sample_id = $$alt_sample_hash{ $sample_id } if exists $$alt_sample_hash{ $sample_id };
+    $meta_data_entry = $meta_data->{$sample_id};
+    throw( "No metadata for sample $sample_id" ) if ( $sample_id && !$meta_data_entry );
+    $output_dir =  $results_base_dir;
   }
   my $collection_name = $meta_data_entry->{$collection_tag};
   throw( "no collection name for sample $sample_id" ) unless $collection_name;
@@ -624,7 +691,8 @@ sub derive_CNAG_path {
                        pipeline_name   => $pipeline_name,
                        species         => $species,
                        freeze_date     => $freeze_date,
-                       genome_version  => $genome_version
+                       genome_version  => $genome_version,
+                       alt_sample_hash => $alt_sample_hash,
                     ); 
   
   my $destination = get_new_path( \%path_option );
@@ -749,6 +817,10 @@ sub derive_CRG_path {
       $output_dir = $results_base_dir;
       $pipeline_name = 'rsem_grape2_crg';
     }
+    elsif ( $file_object->type eq 'RNA_COSI_STAR_CRG' ) {
+     $output_dir = $results_base_dir;
+     $meta_data_entry->{experiment_type} = $mark;
+    }
     else {
       throw( "Couldn't build path for file $filename with " . $file_object->type );
     }
@@ -830,16 +902,19 @@ sub derive_WTSI_path {
   my $output_dir; 
   
   my ( $sample_id, $type, $algo, $date, $suffix  ) = split '\.', $filename;              ### WTSI_proposed file format
-  $pipeline_name = $type;
+  
   
   my $meta_data = $$options{meta_data} or throw( "missing meta_data object" );
   my $meta_data_entry = $meta_data->{$sample_id};
   $meta_data_entry = get_experiment_names( $meta_data_entry ); ## reset experiment specific hacks
   my $collection_name = $meta_data_entry->{$collection_tag};
-  throw( "no collection name for sample $sample_id" ) unless $collection_name;
+  throw( "no collection name for sample $sample_id: $filename" ) unless $collection_name;
     
   if ( $file_object->type =~ m/BAM/ || $file_object->type =~ m/BAI/ ) {      
       $output_dir = $aln_base_dir;
+      $meta_data_entry->{experiment_type} = $type;
+      $pipeline_name = $algo;
+   
   }
   
   my %path_options = ( meta_data_entry => $meta_data_entry,
@@ -867,8 +942,11 @@ sub get_new_path {
  my $freeze_date     = $$options{freeze_date}     or throw( "missing freeze date" );
  my $suffix          = $$options{suffix}          or throw( "missing suffix for $filename" );
  my $pipeline_name   = $$options{pipeline_name}   or throw( "missing pipeline_name" );
- my $genome_version  = $$options{genome_version}   or throw( 'missing genome version' );
+ my $genome_version  = $$options{genome_version}  or throw( 'missing genome version' );
  my $experiment_type = $$options{experiment_type};
+
+ my $alt_sample_hash = {};
+ $alt_sample_hash    = $$options{alt_sample_hash};
  
  $experiment_type = $meta_data_entry->{experiment_type} unless $experiment_type;
  $species = lc( $species );
@@ -878,8 +956,11 @@ sub get_new_path {
  #                      $experiment_type,
  #                      $pipeline_name, $freeze_date,  $suffix
  #                  );
-  
- my @file_tokens = (   $meta_data_entry->{sample_name},
+ 
+ my $sample_name = $meta_data_entry->{sample_name};
+ $sample_name = $$alt_sample_hash{ $sample_name } if exists $$alt_sample_hash{ $sample_name };
+
+ my @file_tokens = (   $sample_name,
                        $experiment_type,
                        $pipeline_name,
                        $genome_version,
