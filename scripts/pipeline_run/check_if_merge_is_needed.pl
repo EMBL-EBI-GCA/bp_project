@@ -6,14 +6,16 @@ use ReseqTrack::Tools::Exception;
 use Data::Dumper;
 use Array::Utils qw(:all);
 
-my ( $dbhost, $dbuser, $dbpass, $dbport, $dbname );
+my ( $dbhost, $dbuser, $dbpass, $dbport, $dbname,$type_merge );
 
 &GetOptions(
     'dbhost=s'                  => \$dbhost,
     'dbname=s'                  => \$dbname,
     'dbuser=s'                  => \$dbuser,
     'dbpass=s'                  => \$dbpass,
-    'dbport=s'                  => \$dbport);
+    'dbport=s'                  => \$dbport,
+    'type=s'                    => \$type_merge
+);
 
 # dba + adaptors
 my $db = ReseqTrack::DBSQL::DBAdaptor->new(
@@ -31,7 +33,8 @@ my $rm   = $db->get_RunMetaInfoAdaptor;
 
 my %hash;
 
-my $type_merge='CHIP_MERGE_RUN_BAM';
+die ("[ERROR] Invalid --type: $type_merge") if $type_merge ne 'DNASE_MERGE_RUN_BAM' && $type_merge ne 'CHIP_MERGE_RUN_BAM';
+
 my $cs = $ca->fetch_by_type( $type_merge);
 
 foreach my $c ( @{$cs} ){
