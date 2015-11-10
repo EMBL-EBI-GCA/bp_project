@@ -3,10 +3,10 @@ We do not expect this code to be generally useful but if you have any questions 
 ## check_md5.sh 
 Run like:
 ```
-bsub -J file_md5[1-3]%3 sh check_md5.sh
+bsub -o file_md5.%J.%I -J file_md5[1-3]%3 sh check_md5.sh files_to_check.txt
 ```
 Where ```[1-3]``` controls the number of jobs to submit to the cluster and ```%3``` controls the number of concocurrent jobs
-A file named ```file.list ``` must be presend in the same folder where the script is.
+File named ```files_to_check.txt``` containing the files to check
 This file needs to have the following format:
  ```
  004g2009c4396dbcc3bbf72ee7915649  exampleFile.bam
