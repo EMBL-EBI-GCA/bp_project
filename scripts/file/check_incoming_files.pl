@@ -16,6 +16,7 @@ use File::Path;
 use File::Basename qw(fileparse basename);
 use Getopt::Long;
 use autodie;
+use Data::Dump qw(dump);
 
 local $| = 1;
 
@@ -38,6 +39,7 @@ my $staging_dir;
 my %options;
 my $trim_dir;
 my $old_tree_dir;
+my $host_name;
 
 &GetOptions( 
         'dbhost=s'                  => \$dbhost,
@@ -56,6 +58,7 @@ my $old_tree_dir;
         'md5_manifest_tag=s'        => \$md5_manifest_tag,
         'withdraw_manifest!'        => \$withdraw_manifest,
         'withdrawn_dir=s'           => \$withdrawn_dir,
+        'host_name=s'               => \$host_name,
        );
 
 throw( 'Required option -dir_to_tree & -staging_dir' ) if ( !$dir_to_tree or !$staging_dir );
@@ -67,9 +70,6 @@ my $old_tree_path = $old_tree_dir . '/' . $file_tree_name;
 $old_tree_path    =~ s{//}{/}g;
 
 check_file_exists( $old_tree_path );
-
-# create the tree diffs object early in the script to make sure date is correct
-# because the cron job is run close to midnight.
 
 my $tree_diffs = ReseqTrack::Tools::CurrentTreeDiffer->new(
                   -old_tree               => $old_tree_path,
@@ -88,6 +88,20 @@ my $db = ReseqTrack::DBSQL::DBAdaptor->new(
 throw( "No DB connection established" ) if ( !$db );
 
 my $fa = $db->get_FileAdaptor;
+my $ha = $db->get_HostAdaptor;
+my $remote_hosts = $ha->fetch_all_remote;
+
+my @skip_hosts;
+
+if( $host_name ){
+  my %host_names = map{ $_ => 1 }split /\s+/, $host_name;
+
+  foreach my $rh (@$remote_hosts){
+    push @skip_hosts, $rh->name
+        unless exists $host_names{$rh->name};
+  }
+}
+
 
 my ( $current_time_stamp ) = get_time_stamps;
 
@@ -99,8 +113,11 @@ my $tmp_current_tree = File::Temp->new( TEMPLATE => "temp.current.$current_time_
 
 my $new_tree_path = $tmp_current_tree->filename;                                         ## creating new temp current.tree file
 
+my @skip_regexes = ( $file_tree_name );
+push @skip_regexes, @skip_hosts if @skip_hosts;
+
 my $tree_maker = ReseqTrack::Tools::CurrentTreeMaker->new(
-  -skip_regexes => $file_tree_name,
+  -skip_regexes => \@skip_regexes,
   -dir_to_tree  => $dir_to_tree,
   -file_adaptor => $fa,
   -trim_dir     => $trim_dir,
@@ -138,7 +155,6 @@ else {
 $db->dbc->disconnect_when_inactive(1);
 
 
-
 sub process_files {
   my ( $db, $logged_changes, $type, $manifest_type, $check_md5_file_and_load,  
        $md5_manifest_tag,    $withdraw_manifest,    $withdrawn_dir           ) = @_;
@@ -146,32 +162,38 @@ sub process_files {
   my $host_adaptor = $db->get_HostAdaptor;
   my %host_files;
 
+  throw('No host adaptor found') if !$host_adaptor;
+  throw('No change log found') if !$logged_changes;
+
   while (my ( $change, $details_list ) = each %$logged_changes ) {
+
     if ( $change eq 'new' ) {
-    foreach my $details ( @{ $details_list } ) {
-      my $new_file_name = $$details[0];                                                    ## get new file names from current.tree diff hash
-      my $basename = fileparse( $new_file_name );
-      my $existing = $fa->fetch_by_filename( $basename );                                  ## check in db for already existing files
-      if ( @$existing ) {
-        throw( "File with name $basename already exists in the database: " .  
+      foreach my $details ( @{ $details_list } ) {
+        my $new_file_name = $$details[0];                                                    ## get new file names from current.tree diff hash
+
+        my $basename = fileparse( $new_file_name );
+        my $existing = $fa->fetch_by_filename( $basename );                                  ## check in db for already existing files
+        if ( @$existing ) {
+          throw( "File with name $basename already exists in the database: " .  
               join(',', map {$_->name} @$existing) ); 
-      } 
-      else {
-        my ( $host_name, $file_base_name ) = 
+        } 
+        else {
+          my ( $host_name, $file_base_name ) = 
                        ( $new_file_name =~ /incoming\/(\w+)\/(\S+)$/ );                    ## get host name for files 
 
-        my $host = $host_adaptor->fetch_by_name( $host_name );                             ## check host
-        throw( "No host name found for $new_file_name" ) unless $host;            
+          my $host = $host_adaptor->fetch_by_name( $host_name );                             ## check host
+          throw( "No host name found for $new_file_name" ) unless $host;            
 
-        push ( @{$host_files { $host_name }}, $file_base_name );                           ## make files array per host, add relative file path
-      } 
+          push ( @{$host_files { $host_name }}, $file_base_name );                           ## make files array per host, add relative file path
+        } 
+      }
     }
-   }
   }
 
   ## strict checking of manifest before processing the files
 
   foreach my $host_name ( keys %host_files ){
+
     my ( $manifest_file, $host_file_type_hash ) = assign_incoming_type( $host_name,     \%host_files, $type, 
                                                                         $manifest_type, $md5_manifest_tag   );
     my $file_count = scalar @{$host_files{ $host_name }};
@@ -240,8 +262,6 @@ sub check_md5_manifest_file {
   }
 
   throw( "manifest file not found for $host_name" ) if scalar @manifest_path_array == 0;
-  #throw( "multiple manifest file found for $host_name" ) if ( scalar @manifest_path_array > 1 );  
-
 
   my %manifest_enrty = map{ $_ => 1 } @manifest_path_array;
   @manifest_path_array = map{ $host_dir .'/'. $_ } @manifest_path_array;  
@@ -454,6 +474,8 @@ Standard options other than db paramters
 
  -withdrawn_dir              Manifest files withdrawn directory
 
+ -host_name                  Name of host dir(s) to look for new files. It can accept multiple host name as a space separated string.
+                             default: all hosts
 
 =head1 Examples
 
@@ -461,7 +483,10 @@ Standard options other than db paramters
  
  Run it like this for the Blueprint project (with default parameters):
 
-   perl file/check_incoming_files.pl  $DB_OPTS  -dir_to_tree  <dir_path> -work_dir <work_dir_path> -withdrawn_dir <withdrawn_dir_path>
+   perl file/check_incoming_files.pl  $DB_OPTS  -dir_to_tree  <dir_path> -work_dir <work_dir_path> -withdrawn_dir <withdrawn_dir_path> -host_name HOST_DIR_NAME
+
+ or
+   perl file/check_incoming_files.pl  $DB_OPTS  -dir_to_tree  <dir_path> -work_dir <work_dir_path> -withdrawn_dir <withdrawn_dir_path> -host_name 'HOST_DIR_NAME_1 HOST_DIR_NAME_2'
 
  To load incoming files without md5 information
   
