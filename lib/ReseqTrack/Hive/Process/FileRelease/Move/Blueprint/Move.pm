@@ -17,7 +17,7 @@ sub param_defaults {
 sub derive_path {
   my ( $self, $dropbox_path, $file_object ) = @_;	
   
-  my $destination;
+  my ( $destination, $collection_name );
   
   my $derive_path_options = $self->param( 'derive_path_options' );
   
@@ -65,9 +65,13 @@ sub derive_path {
   throw( "this module needs a freeze date" )
     if ! defined $freeze_date;
    
-  my $file_host_name = $file_object->host;                                     ## fetch host name
+  my $file_host_name = $file_object->host->name;                               ## fetch host name
   throw( "this module needs a host name" )
     if ! defined $file_host_name;
+
+  my $collection_tag = $derive_path_options->{collection_tag};                 ## collection tag, e.g. EXPERIMENT_ID
+  throw( "this module needs a collection tag" )
+    if ! defined $collection_tag;
 
   my $file_type = $file_object->type;
   
@@ -79,7 +83,6 @@ sub derive_path {
   my $meta_data = _get_meta_data($run_meta_data_file);                   ## get metadata hash from file
 
   my ( $filename, $incoming_dirname ) = fileparse( $dropbox_path );
-  
   my $alt_sample_hash = {};
   $alt_sample_hash = _get_hash_from_file( $alt_sample_name ) if $alt_sample_name;
   
@@ -93,33 +96,35 @@ sub derive_path {
                        freeze_date      => $freeze_date,
                        alt_sample_hash  => $alt_sample_hash,
                        file_object      => $file_object,
+                       collection_tag   => $collection_tag,
                      );
                      
   if ( $filename =~ m/^(ERR\d+)/ ) {                                    ## check for ENA id 
     throw( 'Expection sample name got ENA run id' );                    ## ENA is support is disabled
   }
-  elsif ( $file_host_name eq 'CNAG' } ) {                               ## data from CNAG
+  elsif ( $file_host_name eq 'CNAG'  ) {                               ## data from CNAG
   
-    $destination = $self->_derive_CNAG_path( \%path_options ); 
+   ( $destination, $collection_name ) = $self->_derive_CNAG_path( \%path_options ); 
   }
   elsif ( $file_host_name eq 'CRG' ) {                                   ## data from CRG
    
-    $destination = $self->_derive_CRG_path( \%path_options );                                         
+   ( $destination, $collection_name ) = $self->_derive_CRG_path( \%path_options );                                         
   }
-  elsif ( $file_host_name eq 'NCMLS'} )   {                              ## data from NCMLS
+  elsif ( $file_host_name eq 'NCMLS' )   {                              ## data from NCMLS
   
-    $destination = $self->_derive_NCMLS_path( \%path_options );  
+   ( $destination, $collection_name ) = $self->_derive_NCMLS_path( \%path_options );  
   }
   elsif ( $file_host_name eq 'WTSI' ) {                                  ## data from WTSI
   
-    $destination = $self->_derive_WTSI_path( \%path_options );  
+   ( $destination, $collection_name ) = $self->_derive_WTSI_path( \%path_options );  
   }
   else {
     throw( "Cannot find sample information from $filename and host id $file_host_name" );
   }
   
- return $destination; 
- 
+  throw("couldn't find collection name") if !$collection_name;
+  
+  return $destination, $collection_name; 
 } 
 
 sub _get_hash_from_file {
@@ -162,23 +167,25 @@ sub _get_meta_data {
 }
 
 sub _derive_CNAG_path {
-  my ( $self, %options ) = @_;
+  my ( $self, $options ) = @_;
   
-  my $filename         = $options{filename}         or throw( "missing filename" );
-  my $aln_base_dir     = $options{aln_base_dir}     or throw( "missing aln_base_dir" );
-  my $vcf_base_dir     = $options{vcf_base_dir}     or throw( "missing vcf_base_dir" );
-  my $results_base_dir = $options{results_base_dir} or throw( "missing results_base_dir" );
-  my $meta_data        = $options{meta_data}        or throw( "missing meta_data object" );
-  my $file_object      = $options{file_object}      or throw( "missing file object" );
-  my $species          = $options{species}          or throw( 'missing species name' );          ### species name
-  my $freeze_date      = $options{freeze_date}      or throw( 'missing freeze date' );
-  my $genome_version   = $options{genome_version}   or throw( 'missing genome version' );     
-  my $alt_sample_hash  = $options{alt_sample_hash}  or throw( 'missing alt_sample_hash' );   
+  my $filename         = $$options{filename}         or throw( "missing filename" );
+  my $aln_base_dir     = $$options{aln_base_dir}     or throw( "missing aln_base_dir" );
+  my $vcf_base_dir     = $$options{vcf_base_dir}     or throw( "missing vcf_base_dir" );
+  my $results_base_dir = $$options{results_base_dir} or throw( "missing results_base_dir" );
+  my $meta_data        = $$options{meta_data}        or throw( "missing meta_data object" );
+  my $file_object      = $$options{file_object}      or throw( "missing file object" );
+  my $species          = $$options{species}          or throw( 'missing species name' );          ### species name
+  my $freeze_date      = $$options{freeze_date}      or throw( 'missing freeze date' );
+  my $genome_version   = $$options{genome_version}   or throw( 'missing genome version' );     
+  my $alt_sample_hash  = $$options{alt_sample_hash}  or throw( 'missing alt_sample_hash' );   
+  my $collection_tag   = $$options{collection_tag}   or throw( 'missing collection name tag' );
+  $collection_tag      = lc( $collection_tag );
   
-  my ( $pipeline_name, $output_dir );
+  my ( $pipeline_name, $output_dir, $meta_data_entry, $collection_name );
   my ( $sample_id, $experiment_type, $pipeline, $date, $suffix );  
   
-  if ( $file_object->type eq 'BS_BAM_CNAG' || $file_object->type eq 'BS_BAI_CNAG' ) }
+  if ( $file_object->type eq 'BS_BAM_CNAG' || $file_object->type eq 'BS_BAI_CNAG' ) {
    # ( $sample_id, $suffix ) = split '\.',  $filename;                           ## CNAG BAM ana analysis file name convensions are different
      my @file_fields = split '\.',  $filename;
      $sample_id = $file_fields[0];
@@ -186,15 +193,18 @@ sub _derive_CNAG_path {
      
      $sample_id = $$alt_sample_hash{ $sample_id } if exists $$alt_sample_hash{ $sample_id };
      $meta_data_entry = $meta_data->{$sample_id};
-
      throw( "No metadata for sample $sample_id" ) if ( $sample_id && !$meta_data_entry );
      $meta_data_entry = _get_experiment_names( $meta_data_entry );              ## reset experiment specific hacks
+
+     $collection_name = $meta_data_entry->{$collection_tag};
+     throw( "no collection name for sample $sample_id" ) unless $collection_name;
      
      $pipeline_name = 'gem_cnag_bs';
      throw("expecting suffix bam, got $suffix") unless ( $suffix =~ m/^bam$/i or $suffix =~ m/^bai$/i );   ### file suffix check
      
      $experiment_type = 'BS';
-     $output_dir = $aln_base_dir;
+     $output_dir = $aln_base_dir;                                       ## seting output dir
+     $meta_data_entry->{experiment_type} = $experiment_type;
   } 
   elsif ( $file_object->type eq 'BS_BCF_CNAG' ||
           $file_object->type eq 'BS_BCF_CSI_CNAG' ){
@@ -208,10 +218,14 @@ sub _derive_CNAG_path {
     $meta_data_entry = $meta_data->{$sample_id};
     throw( "No metadata for sample $sample_id" ) if ( $sample_id && !$meta_data_entry );
     $meta_data_entry = _get_experiment_names( $meta_data_entry );
+
+    $collection_name = $meta_data_entry->{$collection_tag};
+    throw( "no collection name for sample $sample_id" ) unless $collection_name;
    
     $pipeline_name   = 'gem_cnag_bs';
     $experiment_type = 'WGBS'; 
-    $output_dir      = $vcf_base_dir; 
+    $output_dir      = $vcf_base_dir;                                  ## seting output dir
+    $meta_data_entry->{experiment_type} = $experiment_type;
   }                                                                    
   else {
    my $file_freeze_date;
@@ -220,34 +234,43 @@ sub _derive_CNAG_path {
     $sample_id       = $$alt_sample_hash{ $sample_id } if exists $$alt_sample_hash{ $sample_id };
     $meta_data_entry = $meta_data->{$sample_id};
     throw( "No metadata for sample $sample_id" ) if ( $sample_id && !$meta_data_entry );
-    $output_dir =  $results_base_dir;
+    $output_dir =  $results_base_dir;                                  ## seting output dir
+
+    $collection_name = $meta_data_entry->{$collection_tag};
+    throw( "no collection name for sample $sample_id" ) unless $collection_name;
+    
+    $meta_data_entry->{experiment_type} = $experiment_type;
   }
-  
-  my $destination = $self->_get_new_path( meta_data_entry => $meta_data_entry,
-                                          output_base_dir => $output_dir,
-                                          filename        => $filename,
-                                          experiment_type => $experiment_type,
-                                          suffix          => $suffix,
-                                          pipeline_name   => $pipeline_name,
-                                          species         => $species,
-                                          genome_version  => $genome_version,
-                                          freeze_date     => $freeze_date, 
-                                        ) or throw("couldn't get new file path");                                           
-  return $destination; 
+
+  my %options = ( meta_data_entry => $meta_data_entry,
+                  output_base_dir => $output_dir,
+                  filename        => $filename,
+                  experiment_type => $experiment_type,
+                  suffix          => $suffix,
+                  pipeline_name   => $pipeline_name,
+                  species         => $species,
+                  genome_version  => $genome_version,
+                  freeze_date     => $freeze_date,
+                );
+
+  my $destination = $self->_get_new_path( \%options )  or throw("couldn't get new file path");                                       
+  return $destination, $collection_name; 
 }
 
 sub _derive_CRG_path {
-  my ( $self, %options ) = @_;
+  my ( $self, $options ) = @_;
   
-  my $filename         = $options{filename}         or throw( 'missing filename' );
-  my $aln_base_dir     = $options{aln_base_dir}     or throw( 'missing aln_base_dir' );
-  my $results_base_dir = $options{results_base_dir} or throw( 'missing results_base_dir' );
-  my $meta_data        = $options{meta_data}        or throw( 'missing meta_data object' );
-  my $file_object      = $options{file_object}      or throw( 'missing file object' );
-  my $species          = $options{species}          or throw( 'missing species name' );      
-  my $freeze_date      = $options{freeze_date}      or throw( 'missing freeze date' );  ## species name
-  my $genome_version   = $options{genome_version}   or throw( 'missing genome version' );
-  
+  my $filename         = $$options{filename}         or throw( 'missing filename' );
+  my $aln_base_dir     = $$options{aln_base_dir}     or throw( 'missing aln_base_dir' );
+  my $results_base_dir = $$options{results_base_dir} or throw( 'missing results_base_dir' );
+  my $meta_data        = $$options{meta_data}        or throw( 'missing meta_data object' );
+  my $file_object      = $$options{file_object}      or throw( 'missing file object' );
+  my $species          = $$options{species}          or throw( 'missing species name' );      
+  my $freeze_date      = $$options{freeze_date}      or throw( 'missing freeze date' );  ## species name
+  my $genome_version   = $$options{genome_version}   or throw( 'missing genome version' );
+  my $collection_tag   = $$options{collection_tag}   or throw( 'missing collection name tag' );
+  $collection_tag      = lc( $collection_tag );
+
   my @file_fields   = split '\.',  $filename;
   my $sample_id     = $file_fields[0];
   my $mark          = $file_fields[1];
@@ -262,8 +285,9 @@ sub _derive_CRG_path {
   
   $meta_data_entry = _get_experiment_names( $meta_data_entry );                        ## reset experiment specific hacks
   throw( "No metadata for sample $sample_id" ) if ( $sample_id && !$meta_data_entry );
-  
-  #$pipeline_name = 'gem_grape_crg';                                                    ## CRG pipeline name
+
+  my $collection_name = $meta_data_entry->{$collection_tag};
+  throw( "no collection name for sample $sample_id" ) unless $collection_name;
   
   if ( $file_object->type eq 'RNA_BAM_CRG' || $file_object->type eq 'RNA_BAI_CRG' ) {      
       $output_dir = $aln_base_dir;
@@ -276,7 +300,7 @@ sub _derive_CRG_path {
    elsif ( $file_object->type =~ m/SIGNAL/ ) {
     ( $run, $mark, $big_wig ) = split '\.', $filename;
     
-     elsif ( $file_object->type eq 'RNA_SIGNAL_CRG' ) {
+     if ( $file_object->type eq 'RNA_SIGNAL_CRG' ) {
        $pipeline_name = 'gem_grape_crg';    
      }
      elsif( $file_object->type eq  'RNA_SIGNAL_STAR_CRG' ){
@@ -357,34 +381,41 @@ sub _derive_CRG_path {
     else {
       throw( "Unsure how to label file $filename " . $file_object->type );
     }
-    
-    my $destination = $self->_get_new_path( meta_data_entry => $meta_data_entry,
-                                            output_base_dir => $output_dir,
-                                            filename        => $filename,
-                                            suffix          => $suffix,
-                                            experiment_type => $experiment_type,
-                                            pipeline_name   => $pipeline_name,
-                                            species         => $species,
-                                            freeze_date     => $freeze_date,
-                                            genome_version  => $genome_version,  
-                                           ) or throw("couldn't get new file path");
-    return $destination;                                     
+  
+    my %options = ( meta_data_entry => $meta_data_entry,
+                    output_base_dir => $output_dir,
+                    filename        => $filename,
+                    suffix          => $suffix,
+                    pipeline_name   => $pipeline_name,
+                    species         => $species,
+                    freeze_date     => $freeze_date,
+                    genome_version  => $genome_version,
+                  );  
+    my $destination = $self->_get_new_path( \%options  ) or throw("couldn't get new file path");
+    return $destination, $collection_name;                                     
 }
 
 sub _derive_NCMLS_path {
-  my ( $self, %options ) = @_;
+  my ( $self, $options ) = @_;
   
-  my $filename         = $options{filename}         or throw( "missing filename" );
-  my $aln_base_dir     = $options{aln_base_dir}     or throw( "missing aln_base_dir" );
-  my $results_base_dir = $options{results_base_dir} or throw( "missing results_base_dir" );
-  my $species          = $options{species}          or throw( 'missing species name' );                   ## species name
-  my $freeze_date      = $options{freeze_date}      or throw( 'missing freeze date' );
-  my $file_object      = $options{file_object}      or throw( 'missing file object' );
+  my $filename         = $$options{filename}         or throw( "missing filename" );
+  my $aln_base_dir     = $$options{aln_base_dir}     or throw( "missing aln_base_dir" );
+  my $results_base_dir = $$options{results_base_dir} or throw( "missing results_base_dir" );
+  my $species          = $$options{species}          or throw( 'missing species name' );                   ## species name
+  my $freeze_date      = $$options{freeze_date}      or throw( 'missing freeze date' );
+  my $file_object      = $$options{file_object}      or throw( 'missing file object' );
+  my $genome_version   = $$options{genome_version}   or throw( 'missing genome version' );
+  my $collection_tag   = $$options{collection_tag}   or throw( 'missing collection name tag' );
+  $collection_tag      = lc( $collection_tag );
   
   my ( $sample_id, $mark, $suffix ) = split /\.|_/, $filename;                                   ## NCMLS file name format: ??? ## FIX_IT
-  my $meta_data = $options{meta_data} or throw( "missing meta_data object" );
+  my $meta_data = $$options{meta_data} or throw( "missing meta_data object" );
   my $meta_data_entry = $meta_data->{$sample_id};
   $meta_data_entry = _get_experiment_names( $meta_data_entry );                                  ## reset experiment specific hacks
+  throw("no metadata entry for $sample_id") if !$meta_data_entry;
+
+  my $collection_name = $meta_data_entry->{$collection_tag};
+  throw( "no collection name for sample $sample_id" ) unless $collection_name;
 
   my $pipeline_name;
   my $output_dir; 
@@ -397,37 +428,48 @@ sub _derive_NCMLS_path {
       $output_dir = $aln_base_dir;
   }
   
-  my $destination = $self->_get_new_path( meta_data_entry => $meta_data_entry,
-                                          output_base_dir => $output_dir,
-                                          filename        => $filename,
-                                          suffix          => $suffix,
-                                          pipeline_name   => $pipeline_name,
-                                          species         => $species,
-                                          freeze_date     => $freeze_date 
-                                        ) or throw("couldn't get new file path");                                           
-  return $destination;
+  my %options = ( meta_data_entry => $meta_data_entry,
+                  output_base_dir => $output_dir,
+                  filename        => $filename,
+                  suffix          => $suffix,
+                  pipeline_name   => $pipeline_name,
+                  species         => $species,
+                  genome_version  => $genome_version,
+                  freeze_date     => $freeze_date
+                );
+
+  my $destination = $self->_get_new_path( \%options ) or throw("couldn't get new file path");                                           
+  return $destination, $collection_name;
     
 }
 
 
 sub _derive_WTSI_path {
-  my ( $self, %options ) = @_;
+  my ( $self, $options ) = @_;
   
-  my $filename         = $options{filename}         or throw( "missing filename" );
-  my $aln_base_dir     = $options{aln_base_dir}     or throw( "missing aln_base_dir" );
-  my $results_base_dir = $options{results_base_dir} or throw( "missing results_base_dir" );
-  my $species          = $options{species}          or throw( 'missing species name' );                    ## species name
-  my $freeze_date      = $options{freeze_date}      or throw( 'missing freeze date' );
-  my $file_object      = $options{file_object}      or throw( 'missing file object' );
+  my $filename         = $$options{filename}         or throw( "missing filename" );
+  my $aln_base_dir     = $$options{aln_base_dir}     or throw( "missing aln_base_dir" );
+  my $results_base_dir = $$options{results_base_dir} or throw( "missing results_base_dir" );
+  my $species          = $$options{species}          or throw( 'missing species name' );                    ## species name
+  my $freeze_date      = $$options{freeze_date}      or throw( 'missing freeze date' );
+  my $file_object      = $$options{file_object}      or throw( 'missing file object' );
+  my $genome_version   = $$options{genome_version}   or throw( 'missing genome version' );
+  my $collection_tag   = $$options{collection_tag}   or throw( 'missing collection name tag' );
+  $collection_tag      = lc( $collection_tag );
+
   my $pipeline_name;
   my $output_dir; 
   
   my ( $sample_id, $type, $algo, $date, $suffix  ) = split '\.', $filename;                     ## WTSI proposed file format
   
   
-  my $meta_data = $options{meta_data} or throw( "missing meta_data object" );
+  my $meta_data = $$options{meta_data} or throw( "missing meta_data object" );
   my $meta_data_entry = $meta_data->{$sample_id};
   $meta_data_entry = _get_experiment_names( $meta_data_entry );                                  ## reset experiment specific hacks
+  throw("no metadata entry for $sample_id") if !$meta_data_entry;
+
+  my $collection_name = $meta_data_entry->{$collection_tag};
+  throw( "no collection name for sample $sample_id" ) unless $collection_name;
   
   if ( $file_object->type =~ m/BAM/ || $file_object->type =~ m/BAI/ ) {      
       $output_dir = $aln_base_dir;
@@ -435,45 +477,43 @@ sub _derive_WTSI_path {
       $pipeline_name = $algo;
   }
   
-  my $destination = $self->_get_new_path( meta_data_entry => $meta_data_entry,
-                                          output_base_dir => $output_dir,
-                                          filename        => $filename,
-                                          suffix          => $suffix,
-                                          experiment_type => $experiment_type,
-                                          pipeline_name   => $pipeline_name,
-                                          species         => $species,
-                                          genome_version  => $genome_version,
-                                          freeze_date     => $freeze_date 
-                                        ) or throw("couldn't get new file path");                                           
-  return $destination;
+  my %options = ( meta_data_entry => $meta_data_entry,
+                  output_base_dir => $output_dir,
+                  filename        => $filename,
+                  suffix          => $suffix,
+                  pipeline_name   => $pipeline_name,
+                  species         => $species,
+                  genome_version  => $genome_version,
+                  freeze_date     => $freeze_date
+               );
+
+  my $destination = $self->_get_new_path( \%options ) or throw("couldn't get new file path");                                           
+  return $destination, $collection_name;
 }
 
 sub _get_new_path {
- my ( $self, %options ) = @_;
+ my ( $self, $options ) = @_;
  my $destination;
- 
- my $meta_data_entry = $options{meta_data_entry} or throw("No meta_data_entry");
- my $output_base_dir = $options{output_base_dir} or throw("No output_base_dir");
- my $filename        = $options{filename}        or throw("No filename");
- my $species         = $options{species}         or throw( 'missing species name' );                     ## species name
- my $genome_version  = $options{genome_version}  or throw( 'missing genome version' );
- my $freeze_date     = $options{freeze_date}     or throw( 'missing freeze date' );
- my $experiment_type = $options{experiment_type} or throw( 'missing experiment type' );
- my $suffix          = $options{suffix}          or throw( 'missing suffix' );
- my $pipeline_name   = $options{pipeline_name}   or throw( 'missing pipeline_name' );
+
+ my $meta_data_entry = $$options{meta_data_entry} or throw( 'No meta_data_entry' );
+ my $output_base_dir = $$options{output_base_dir} or throw( 'No output_base_dir' );
+ my $filename        = $$options{filename}        or throw( 'No filename' );
+ my $species         = $$options{species}         or throw( 'missing species name' );                     ## species name
+ my $genome_version  = $$options{genome_version}  or throw( 'missing genome version' );
+ my $freeze_date     = $$options{freeze_date}     or throw( 'missing freeze date' );
+ my $suffix          = $$options{suffix}          or throw( 'missing suffix' );
+ my $pipeline_name   = $$options{pipeline_name}   or throw( 'missing pipeline_name' );
  
  my $alt_sample_hash = {};
  $alt_sample_hash    = $$options{alt_sample_hash};
- 
+
+ my $experiment_type; 
  $experiment_type = $meta_data_entry->{experiment_type} unless $experiment_type;
  
  $species = lc( $species );
- $species = s{\s+}{_}g;
- 
- #my @file_tokens = (   $meta_data_entry->{sample_name},
- #                      $meta_data_entry->{experiment_type},
- #                      $pipeline_name, $freeze_date,  $suffix
- #                  );
+ $species =~ s{\s+}{_}g;
+
+ throw("species information is required") if !$species;
  
  my $sample_name = $meta_data_entry->{sample_name};
  $sample_name = $$alt_sample_hash{ $sample_name } if exists $$alt_sample_hash{ $sample_name };
@@ -498,7 +538,7 @@ sub _get_new_path {
   warning ( "CHANGED file name:",$filename," : ",$new_file_name );
  }
 
-$$meta_data_entry{sample_desc_1} = "NO_TISSUE" 
+ $$meta_data_entry{sample_desc_1} = "NO_TISSUE" 
                    if $meta_data_entry->{sample_desc_1} eq "-";
   
  $$meta_data_entry{sample_desc_2} = "NO_SOURCE" 
