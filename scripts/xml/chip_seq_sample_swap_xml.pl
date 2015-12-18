@@ -176,7 +176,7 @@ sub get_list {
 
     if( @header ){
       my @vals = split "\t";
-      die join("\t",@vals),$/ unless scalar @vals==5;
+      die "value missing in the list file: ", join("\t",@vals),$/ unless scalar @vals==5;
 
       my %val_hash;
       @val_hash{ @header } = @vals;
@@ -217,7 +217,7 @@ This script generates xml file for EGA experiment entries with modified samples 
 
 Options:
 
- -infile, tab-delimited file listing the ERA experiment id, new sample alias, new experiment type (histone marks name) & ChIP antibody details
+ -infile, tab-delimited file listing the ERA experiment id, new sample alias, new experiment type (histone marks name) & ChIP antibody details, must have headers
 
  e.g EXPERIMENT_ID <TAB> NEW_SAMPLE_ALIAS <TAB> NEW_EXPERIMENT_TYPE <TAB> NEW_CHIP_ANTIBODY <TAB> NEW_CHIP_ANTIBODY_LOT
 
