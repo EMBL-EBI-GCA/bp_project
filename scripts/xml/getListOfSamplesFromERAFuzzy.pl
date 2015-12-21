@@ -22,7 +22,7 @@ die("[USAGE] perl $0 --samples sample_file.txt --era_user \$ERA_USER --era_pass 
 
 my ($sample_id_list,$sample_dict) = get_list($sample_file);
 
-my @era_conn = ( 'ops$laura', 'thousandgenomes' );
+my @era_conn = ( $era_user, $era_pass );
 my $era = get_erapro_conn(@era_conn);
 $era->dbc->db_handle->{LongReadLen} = 66000;
 
