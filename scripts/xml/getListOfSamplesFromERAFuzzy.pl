@@ -60,7 +60,7 @@ my $twig = XML::Twig->new(
                               },
                        'SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE[string(TAG)="BIOMATERIAL_TYPE"]' =>
                           sub {  my ($twig, $e) = @_;
-                                 my $bio_type='-';
+                                 my $bio_type = '-';
 
                                  foreach my $child ($e->children){
                                    if ( $child->name eq 'VALUE' ){
@@ -71,7 +71,7 @@ my $twig = XML::Twig->new(
                               },
                        'SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE[string(TAG)="CELL_TYPE"]' =>
                           sub {  my ($twig, $e) = @_;
-                                 my $cell_type='-';
+                                 my $cell_type = '-';
 
                                  foreach my $child ($e->children){
                                    if ( $child->name eq 'VALUE' ){
@@ -82,7 +82,7 @@ my $twig = XML::Twig->new(
                               },
                        'SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE[string(TAG)="MARKERS"]' =>
                           sub {  my ($twig, $e) = @_;
-                                 my $markers='-';
+                                 my $markers = '-';
 
                                  foreach my $child ($e->children){
                                    if ( $child->name eq 'VALUE' ){
@@ -93,7 +93,7 @@ my $twig = XML::Twig->new(
                               },
                        'SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE[string(TAG)="TISSUE_TYPE"]' =>
                           sub {  my ($twig, $e) = @_;
-                                 my $tissue_type='-';
+                                 my $tissue_type = '-';
 
                                  foreach my $child ($e->children){
                                    if ( $child->name eq 'VALUE' ){
@@ -104,7 +104,7 @@ my $twig = XML::Twig->new(
                               },
                        'SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE[string(TAG)="DISEASE"]' =>
                           sub {  my ($twig, $e) = @_;
-                                 my $disease='-';
+                                 my $disease = '-';
                               
                                  foreach my $child ($e->children){
                                    if ( $child->name eq 'VALUE' ){
@@ -115,7 +115,7 @@ my $twig = XML::Twig->new(
                               },
                        'SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE[string(TAG)="TREATMENT"]' =>
                           sub {  my ($twig, $e) = @_;
-                                 my $treatment='-';
+                                 my $treatment = '-';
                               
                                  foreach my $child ($e->children){
                                    if ( $child->name eq 'VALUE' ){
@@ -126,7 +126,7 @@ my $twig = XML::Twig->new(
                               },
                        'SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE[string(TAG)="DONOR_SEX"]' =>
                           sub {  my ($twig, $e) = @_;
-                                 my $donor_sex='-';
+                                 my $donor_sex = '-';
                                 
                                  foreach my $child ($e->children){
                                    if ( $child->name eq 'VALUE' ){
@@ -137,7 +137,7 @@ my $twig = XML::Twig->new(
                               },
                        'SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE[string(TAG)="DONOR_AGE"]' =>
                           sub {  my ($twig, $e) = @_;
-                                 my $donor_age='-';
+                                 my $donor_age = '-';
                                 
                                  foreach my $child ($e->children){
                                    if ( $child->name eq 'VALUE' ){
@@ -155,14 +155,13 @@ my $xml_sth = $era->dbc->prepare("select xmltype.getclobval(sample_xml) xml from
 print STDERR join("\t","NEW_SAMPLE_NAME",@headers),$/;
 
 foreach my $sample_id ( @{ $sample_id_list } ) {
-    %hash_line=();
+    %hash_line = map{ $_ => '-' } @headers;
     $xml_sth->execute( $sample_id );
     my $xr = $xml_sth->fetchrow_arrayref();
     if (!$xr) {
 	print STDERR "[WARN] No info for $sample_id $sample_dict->{$sample_id}\n";
 	next;
     } else {
-	print STDERR "[WARN] Sample registered for same donor for $sample_id $sample_dict->{$sample_id}\n";
         my ($xml) = @$xr;
         $twig->parse($xml);
         print STDERR join("\t", $sample_dict->{$sample_id},@hash_line{@headers}),$/;
