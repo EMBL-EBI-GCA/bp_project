@@ -15,25 +15,25 @@ use File::Basename;
 use Getopt::Long;
 use autodie;
 
-my $dbhost = 'mysql-blueprint';
-my $dbuser = 'g1krw';
+my $dbhost;
+my $dbuser;
 my $dbpass;
-my $dbport = 4360;
-my $dbname = 'ihec_benchmark';
+my $dbport;
+my $dbname;
 
 my $host_name            = '1000genomes.ebi.ac.uk';
-my $withdrawn_dir        = '/nfs/1000g-work/G1K/work/avikd/test_dir/file_release_bp_test/withdrawn_dir';
-my $work_dir             = '/nfs/1000g-work/G1K/work/avikd/test_dir/test_file_release_pipe/run';
+my $withdrawn_dir;
+my $work_dir;
 my $incoming_file_type   = 'INCOMING';
 my $incoming_md5_type    = 'INCOMING_MD5';
 my $incoming_md5_tag     = 'md5';
 my $internal_file_type   = 'INTERNAL';
-my $aln_base_dir         = '/nfs/1000g-work/G1K/work/avikd/test_dir/test_file_release_pipe//base_dir/alignment';
-my $vcf_base_dir         = '/nfs/1000g-work/G1K/work/avikd/test_dir/test_file_release_pipe//base_dir/vcf';
-my $results_base_dir     = '/nfs/1000g-work/G1K/work/avikd/test_dir/test_file_release_pipe//base_dir/results';
+my $aln_base_dir;
+my $vcf_base_dir;
+my $results_base_dir;
 my $species              = 'homo sapiens';
 my $freeze_date          = undef;
-my $metadata_file        = '/nfs/1000g-work/ihec/work/davidr/cron/meta_data.tab';
+my $metadata_file;
 my $validate_file        = 0;
 my $assign_type          = 0;
 my $check_path           = 0;
@@ -556,6 +556,16 @@ sub build_dest_path {
        }
   
        throw("no destination found for $f_file_name type $f_file_type") unless $destination;
+
+
+       my $existing_collection = $ca->fetch_by_name_and_type($collection_name,$f_file_type);
+       if( $existing_collection ){
+         my $existing_file_ids  = $existing_collection->other_ids;
+         my $existing_file      = $fa->fetch_by_dbID( $$existing_file_ids[0] );
+         my $existing_file_name = $existing_file->name;
+
+         throw("File already exists for $collection_name, $f_file_type, $existing_file_name");
+       }
 
        print "FILE: $f_file_name\nTYPE: $f_file_type\nNEW_PATH: $destination\ncollection_name:$collection_name\n\n";
 
