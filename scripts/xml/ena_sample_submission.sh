@@ -42,7 +42,8 @@ then
     then
        echo "False, not registered samples in $xml file"
     else
-       echo "Something went wrong"
+       echo "Something went wrong, check ${xml}, $submission, ${dir}"
+       echo $rsp
     fi 
   else
     echo "No new entry present in $xml file"
