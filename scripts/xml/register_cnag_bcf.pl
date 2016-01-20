@@ -28,6 +28,8 @@ my $analysis_set = Bio::SRAXml::Analysis::AnalysisSet->new();
 foreach my $alias (keys %$hash) {
 	print "[INFO] Adding $alias to XML\n";
 	
+	$description=~ s/Variation calls  produced by Bisulfite-Seq of sample .+ were mapped to the human genome \(GRCh38\) using GEM \(3\.0\)\./Variation calls  produced by Bisulfite-Seq of sample $hash->{$alias}->{'prefix'} were mapped to the human genome \(GRCh38\) using GEM \(3\.0\)\./;
+	
 	my $title;
 	if ($file_type eq 'bam') {
 		$title="Mapping of $hash->{$alias}->{'prefix'} DNA Methylation Data";
