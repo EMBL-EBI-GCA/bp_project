@@ -10,6 +10,8 @@ my $in_progress_matrix;
 my $in_ncmls_list;
 my $in_ihec_list;
 my $epirr_data;
+my $mpimg_data; 
+my $cnag_data;
 
 die `perldoc -t $0` if !$in_progress_matrix || !$in_ncmls_list;
 

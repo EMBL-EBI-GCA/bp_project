@@ -41,8 +41,9 @@ then
     elif [[ ${rsp} =~ "success=\"false\"" ]]
     then
        echo "False, not registered samples in $xml file"
+       echo $rsp
     else
-       echo "Something went wrong, check ${xml}, $submission, ${dir}"
+       echo "Something went wrong"
        echo $rsp
     fi 
   else

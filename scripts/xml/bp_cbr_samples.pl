@@ -371,9 +371,6 @@ sub fresh_sample_data {
     else {
         push @attributes, [ 'DONOR_ID', $sample->{donor_id} ];
         push @attributes, [ 'subject_id', $sample->{donor_id} ];  # EGA requires this field
-        push @attributes,
-          [ 'Donor ID', $sample->{donor_id} ];                    # EGA requires this field
-
     }
     push @attributes, [ 'DONOR_AGE',           $age ];
     push @attributes, [ 'DONOR_HEALTH_STATUS', 'NA' ];
@@ -598,7 +595,9 @@ QUERY_END
                     my ( $xt, $element ) = @_;
                     $sample{alias}       = $element->att('alias');
                     $sample{center_name} = $element->att('center_name');
-                    $sample{accession}   = $element->att('accession');
+                    my $sample_acc_id    = $element->att('accession');
+                    my $sample_ega_id    = get_ega_id( $dbc,  $sample_acc_id, 'sample', 'id' );
+                    $sample{accession}   = $sample_ega_id;
                 },
                 TAXON_ID => sub {
                     my ( $xt, $element ) = @_;
@@ -637,6 +636,17 @@ QUERY_END
     }
     $query_sth->finish;
     return \%known_samples;
+}
+
+sub get_ega_id {
+  my ( $dbc, $ena_id, $table, $type ) = @_;
+
+  my $column_name = $table .'_'. $type;
+  my $xml_sth = $dbc->prepare("select ega_id from $table where $column_name = ? ");
+  $xml_sth->execute( $ena_id );
+  my $xr = $xml_sth->fetchrow_arrayref();
+  my $ega_id = $$xr[0];
+  return $ega_id;
 }
 
 sub parse_file {
