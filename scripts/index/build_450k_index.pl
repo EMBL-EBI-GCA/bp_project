@@ -230,8 +230,8 @@ sub get_samples_hash {
       @header = map { s{Sample Name}{Sample_Name}i;$_ } @header; 
       @header = map { uc($_) } @header;
       @header = map { s{\s+$}{}g;$_ } @header; 
-      @header = map { s{\s+}{_}g;$_ } @header; 
       @header = map { s{^\s+}{}g;$_ } @header; 
+      @header = map { s{\s+}{_}g;$_ } @header; 
     }
   }
   return \%sample_hash;
@@ -267,9 +267,9 @@ sub get_data_hash {
       @header = split "\t";
       @header = map { s{Sample Name}{Sample_Name}i;$_ } @header; 
       @header = map { uc($_) } @header;
-      @header = map { s{\s+}{_}g;$_ } @header; 
       @header = map { s{\s+$}{}g;$_ } @header; 
       @header = map { s{^\s+}{}g;$_ } @header;
+      @header = map { s{\s+}{_}g;$_ } @header; 
     }
   }
   return \%files_hash;
@@ -419,8 +419,8 @@ sub prepare_index {
   samples_file     : Tab delimited text copy of the 'Samples & Phenotype' worksheet from EGA AF template
   data_file        : Tab delimited text copy of the 'Data files' worksheet from EGA AF template
   output_index     : Name of output index file in work_dir (Default: array_data.index )
-  db_upload_file   : Output file list for database upload (Default: file_lists_for_db.txt )
-  move_list        : Output file list for file move (Default: move_list.txt )
+  db_upload_file   : Output file for database upload in work_dir (Default: file_lists_for_db.txt )
+  move_list        : Output file list for file move in work_dir (Default: move_list.txt )
   samples_key      : Name of sample name field from samples_file (Default: Sample name )
   files_key        : Name of file field from data_file (Default: Raw data File )
   run_center       : Run center name
