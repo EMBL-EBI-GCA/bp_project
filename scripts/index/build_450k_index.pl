@@ -16,7 +16,7 @@ my $db_upload_file   = 'file_lists_for_db.txt';
 my $move_list        = 'move_list.txt';
 my $samples_key      = 'Sample name';
 my $files_key        = 'Raw data File';
-my $instrument       = 'ILLUMINA 450K';
+my $instrument       = 'Illumina HumanMethylation 450K';
 my $type             = 'IDAT_FILE';
 my $data_format      = '450K_IDAT';
 my $print_header     = undef;
@@ -57,17 +57,16 @@ GetOptions(  'samples_file=s'     => \$samples_input,
 
 die `perldoc -t $0` if !$samples_input || !$data_files_input || !$run_center || !$study_id || 
                        !$work_dir      || !$files_dir        || !$output_dir || !$era_user ||
-                       !$era_pass      || !$freeze_date      || !$array_data_index;
+                       !$era_pass      || !$freeze_date;
 
 my @header_lists = qw/	STUDY_ID		STUDY_NAME		CENTER_NAME
 			FIRST_SUBMISSION_DATE	DATA_FORMAT		SAMPLE_NAME
-			INSTRUMENT_PLATFORM	EXPERIMENT_TYPE		DISEASE
+			INSTRUMENT_PLATFORM	DISEASE			MOLECULE
                         DISEASE_ONTOLOGY_URI	BIOMATERIAL_PROVIDER	BIOMATERIAL_TYPE
-                        CELL_TYPE		SAMPLE_ONTOLOGY_URI
+                        CELL_TYPE		SAMPLE_ONTOLOGY_URI	TYPE
 			TISSUE_TYPE		TISSUE_DEPOT		DONOR_ID
 			DONOR_AGE		DONOR_HEALTH_STATUS	DONOR_SEX
-			MOLECULE		FILE			TYPE
-			FILE_MD5		FILE_SIZE
+			FILE			FILE_MD5		FILE_SIZE
 		    /;
 
 my @file_input_header = ( 'Sample_Name', 
@@ -81,9 +80,11 @@ my @sample_input_header = ( 'Source_name', 'Sample_Name',
                             'Characteristics[BIOMATERIAL_PROVIDER]',
                             'Characteristics[BIOMATERIAL_TYPE]', 
                             'Characteristics[DONOR_SEX]',
+                            'Characteristics[MOLECULE]',
                             'Characteristics[DONOR_ID]', 
                             'Characteristics[DONOR_AGE]',
                             'Characteristics[DISEASE]',
+                            'Characteristics[DONOR_HEALTH_STATUS]',
                             'Characteristics[TISSUE_TYPE]',
                             'Characteristics[SAMPLE_ONTOLOGY_URI]',
                             'Characteristics[DISEASE_ONTOLOGY_URI]'
@@ -169,7 +170,7 @@ foreach my $sample( keys %{ $files_hash } ) {
     $db_entries{md5}  = $file_md5;
     $db_entries{type} = $type;
     $db_entries{size} = $file_size;
-    $db_entries{file} = $output_path;
+    $db_entries{file} = $input_path;
 
     print $db_fh join ("\t", @db_entries{@db_output_header}),$/;
 
@@ -182,6 +183,7 @@ foreach my $sample( keys %{ $files_hash } ) {
                           file_size   => $file_size,
                           type        => $type,
                           data_format => $data_format,
+                          instrument  => $instrument,
                         );
 
     my $index_line = prepare_index( $sample, \@header_lists, \%index_setting, $output_dir, $era );
@@ -361,7 +363,7 @@ sub prepare_index {
   my $type         = $index_setting->{type};
   my $sample_entry = $index_setting->{sample};
   my $data_format  = $index_setting->{data_format};
-
+  my $instrument   = $index_setting->{instrument};
   my ( $study_name, $submission_date ) = get_study_name($era, $study_id);
   my %entry_hash;
 
@@ -401,6 +403,9 @@ sub prepare_index {
     }
     elsif ( $field eq 'DATA_FORMAT' ){
       $entry_hash{$field} = $data_format;
+    }
+    elsif ( $field eq 'INSTRUMENT_PLATFORM' ){
+      $entry_hash{$field} = $instrument;
     }
     else {
       $entry_hash{$field} = '-';
