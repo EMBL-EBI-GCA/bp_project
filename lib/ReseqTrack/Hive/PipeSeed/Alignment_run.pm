@@ -15,6 +15,9 @@ sub create_seed_params {
   my $metadata_file = $options->{'metadata_file'};
   throw('require metadata file') unless $metadata_file;
 
+  my $collection_type = $options->{'collection_type'};
+  throw('require collection_type') unless $collection_type;
+
   my $path_names_array = $options->{'path_names_array'} ? $options->{'path_names_array'} : undef;
  
   my $metadata_hash = _get_metadata_hash( $metadata_file, 'RUN_ID' );
@@ -59,16 +62,22 @@ sub create_seed_params {
 
   my $db  = $self->db();
   my $sa  = $db->get_SampleAdaptor;
+  my $ca  = $db->get_CollectionAdaptor;
   my $ea  = $db->get_ExperimentAdaptor;
   my $sta = $db->get_StudyAdaptor;
 
   $self->SUPER::create_seed_params();
+  
+  my @final_seed;
 
   SEED:
   foreach my $seed_params (@{$self->seed_params}) {
     my ($run, $output_hash) = @$seed_params;
 
     my $run_id = $run->source_id;
+
+    next SEED if !$ca->fetch_by_name_and_type($run_id, $collection_type);  ## no file present for following run
+    next SEED unless exists( $$metadata_hash{ $run_id } );                 ## allow run for test
     throw("$run_id not present in $metadata_file") unless exists( $$metadata_hash{ $run_id } );
     my $metadata_path_hash = _get_path_hash( $run->source_id, $metadata_hash, $path_names_array );
                             
@@ -80,12 +89,17 @@ sub create_seed_params {
     if (scalar @$output_sample_columns || scalar @$output_sample_attributes) {
       my $sample = $sa->fetch_by_dbID($run->sample_id);
       throw('did not get a sample with id '.$run->sample_id) if !$sample;
+    
+      SAMPLE_COLUMN:
       foreach my $column_name (keys %{$sa->column_mappings($sample)}) {
 
         my $column_value         = &{$sa->column_mappings($sample)->{$column_name}}();
+       
+        next SAMPLE_COLUMN unless exists $require_sample_columns->{$column_name};
         my $check_require_sample = _check_hash( $column_name, $column_value, $require_sample_columns, 'require' );
         next SEED if $check_require_sample == 0;
       
+        next SAMPLE_COLUMN unless exists $exclude_sample_columns->{$column_name};
         my $check_exclude_sample = _check_hash( $column_name, $column_value, $exclude_sample_columns, 'exclude' );
         next SEED if $check_exclude_sample > 0;        
 
@@ -114,17 +128,25 @@ sub create_seed_params {
           || scalar @$output_study_columns || scalar @$output_study_attributes) {
       my $experiment = $ea->fetch_by_dbID($run->experiment_id);
       throw('did not get an experiment with id '.$run->experiment_id) if !$experiment;
+
+      EXP_COLUMN:
       foreach my $column_name ( keys %{$ea->column_mappings($experiment)}) {
         
         my $column_value             = &{$ea->column_mappings($experiment)->{$column_name}}();
+
+        next EXP_COLUMN unless exists $require_experiment_columns->{$column_name};
         my $check_require_experiment = _check_hash( $column_name, $column_value, $require_experiment_columns, 'require' );
         next SEED if $check_require_experiment == 0;
-  
+
+        next EXP_COLUMN unless exists $exclude_experiment_columns->{$column_name};
         my $check_exclude_experiment = _check_hash( $column_name, $column_value, $exclude_experiment_columns, 'exclude' );
         next SEED if $check_exclude_experiment > 0;
-
+      }
+ 
+      foreach my $column_name (@$output_experiment_columns){
         $output_hash->{$column_name} = &{$ea->column_mappings($experiment)->{$column_name}}();
       }
+
       if (@$output_experiment_attributes) {
         my $experiment_attributes = $experiment->attributes;
 
@@ -144,12 +166,17 @@ sub create_seed_params {
       if (scalar @$output_study_columns || scalar @$output_study_attributes) {
         my $study = $sta->fetch_by_dbID($experiment->study_id);
         throw('did not get a study with id '.$experiment->study_id) if !$study;
+
+        STUDY_COLUMN:
         foreach my $column_name ( keys %{$sta->column_mappings($study)}) {
 
           my $column_value        = &{$sta->column_mappings($study)->{$column_name}}();
+
+          next STUDY_COLUMN unless exists $require_study_columns->{$column_name};
           my $check_require_study = _check_hash( $column_name, $column_value, $require_study_columns, 'require' );
           next SEED if $check_require_study == 0;
   
+          next STUDY_COLUMN unless exists $exclude_study_columns->{$column_name};
           my $check_exclude_study = _check_hash( $column_name, $column_value, $exclude_study_columns, 'exclude' );
           next SEED if $check_exclude_study > 0;
  
@@ -173,7 +200,9 @@ sub create_seed_params {
         }
       }
     }
+    push @final_seed, $seed_params;
   }
+  $self->seed_params(\@final_seed);
 }
 
 =head1 _check_attributes
