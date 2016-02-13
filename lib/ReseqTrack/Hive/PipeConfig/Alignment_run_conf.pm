@@ -1,4 +1,4 @@
-package Blueprint::PipeConfig::Alignment_run_conf;
+package ReseqTrack/Hive/PipeConfig::Alignment_run_conf;
 
 use strict;
 use warnings;
@@ -14,6 +14,7 @@ sub default_options {
         'pipeline_name' => 'align',
         seeding_module => 'ReseqTrack::Hive::PipeSeed::Alignment_run',
         seeding_options => {
+            collection_type                => $self->o('type_fastq'),
             output_study_columns           => $self->o('study_columns'),
             output_sample_columns          => $self->o('sample_columns'),
             output_experiment_columns      => $self->o('experiment_columns'),
@@ -41,7 +42,9 @@ sub default_options {
             metadata_file                  => $self->o('metadata_file'),
             path_names_array               => $self->o('path_names_array'),
           },
- 
+
+          
+         type_fastq           => $self->o('type_fastq'),
          metadata_file        => $self->o('metadata_file'),
          path_names_array     => [ 'sample_desc_1', 'sample_desc_2', 'sample_desc_3', 'library_strategy', 'center_name' ],
         
