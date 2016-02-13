@@ -1,4 +1,4 @@
-package ReseqTrack/Hive/PipeConfig::Alignment_run_conf;
+package ReseqTrack::Hive::PipeConfig::Alignment_run_conf;
 
 use strict;
 use warnings;
