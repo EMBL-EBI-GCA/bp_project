@@ -1,4 +1,4 @@
-package Blueprint::PipeConfig::RunMerge_conf;
+package ReseqTrack::Hive::PipeConfig::RunMerge_conf;
 
 use strict;
 use warnings;
