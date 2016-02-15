@@ -1,4 +1,4 @@
-package Blueprint::PipeConfig::Run_wiggler_conf;
+package ReseqTrack::Hive::PipeConfig::Run_wiggler_conf;
 
 use strict;
 use warnings;
@@ -25,8 +25,8 @@ sub default_options {
         metadata_file        => $self->o('metadata_file'),
         path_names_array     => [ 'sample_desc_1', 'sample_desc_2', 'sample_desc_3', 'library_strategy', 'center_name' ],
 
-        #'callgroup_type'    => 'DNASE_DEDUP_BAM',
-        #'wiggler_file_type' => 'DNASE_WIGGLE',
+        'callgroup_type'    => $self->o('callgroup_type'),
+        'wiggler_file_type' => $self->o('wiggler_file_type'),
 
         'wiggler_file_type'             => $self->o('wiggler_file_type'),
         'callgroup_type'                => $self->o('callgroup_type'),
@@ -40,7 +40,7 @@ sub default_options {
         'wiggler_exe'             => '/nfs/1000g-work/G1K/work/davidr/pipeline-deps/align2rawsignal/bin/align2rawsignal',
         'bedGraph_to_bigWig_path' => '/nfs/1000g-work/G1K/work/davidr/pipeline-deps/bin/bedGraphToBigWig',
         'output_format'           => 'bw',
-        'chrom_sizes_file'        => '/nfs/1000g-work/G1K/work/avikd/test_dir/test_grch38/no_alt_no_decoy_bwa/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa.fai',
+        'chrom_sizes_file'        => '/nfs/1000g-work/ihec/work/bp_pipe/pipeline_run/reference_dir/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa.fai',
         'chrom_fasta_file'        => '/nfs/1000g-work/G1K/work/davidr/ref_genomes/homo_sapiens/grch38_no_alt_analysis/fasta/',
         'mappability_tracks'      => '/nfs/1000g-work/G1K/work/davidr/ref_genomes/homo_sapiens/grch38_no_alt_analysis/umap/globalmap_k36tok92',
         'mcr_root'                => '/nfs/1000g-work/G1K/work/davidr/pipeline-deps/MCR/v714',
