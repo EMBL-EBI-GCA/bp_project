@@ -295,7 +295,7 @@ sub pipeline_analyses {
       });
       push(@analyses, {
           -logic_name => 'create_merge_collection',
-          -module        => 'ReseqTrack::Hive::Process::BlueprintCreateMergeCollection',
+          -module        => 'ReseqTrack::Hive::Process::CreateMergeCollection',
           -parameters => {
                samtools => $self->o('samtools_exe'), 
                collection_type => $self->o('experiment_merge_type'),
