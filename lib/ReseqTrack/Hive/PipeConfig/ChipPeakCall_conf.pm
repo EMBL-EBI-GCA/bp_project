@@ -1,4 +1,4 @@
-package Blueprint::PipeConfig::ChipPeakCall_conf;
+package ReseqTrack::Hive::PipeConfig::ChipPeakCall_conf;
 
 use strict;
 use warnings;
@@ -35,7 +35,6 @@ sub default_options {
         require_collection_attributes => {},
         exclude_collection_attributes => {},
         require_experiment_type       => 'ChIP-Seq Input',
-        #non_match_input               => '/nfs/1000g-work/ihec/work/avik/pipeline_run/chip_non_match_peak/non_match_input_for_38_peak_call',
         non_match_input               => undef,
         bam_collection_type           => 'CHIP_DEDUP_BAM',
         pipeline_input_file_prefix    => 'input_file',
@@ -46,7 +45,7 @@ sub default_options {
         bedtools        => '/nfs/1000g-work/G1K/work/bin/bedtools2-2.20.1/bin/bedtools',
         bedToBigBedPath => '/nfs/1000g-work/G1K/work/davidr/pipeline-deps/bin/bedToBigBed',
  
-        chr_file        => '/nfs/1000g-work/G1K/work/avikd/test_dir/test_grch38/no_alt_no_decoy_bwa/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa.fai',
+        chr_file        => $self->o('chr_file'),
 
         dir_label_params_list => ["sample_alias", "experiment_source_id"],  
 
