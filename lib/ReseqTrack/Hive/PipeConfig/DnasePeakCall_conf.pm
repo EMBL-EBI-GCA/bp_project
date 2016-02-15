@@ -1,4 +1,4 @@
-package Blueprint::PipeConfig::DnasePeakCall_conf;
+package ReseqTrack::Hive::PipeConfig::DnasePeakCall_conf;
 
 use strict;
 use warnings;
@@ -41,13 +41,13 @@ sub default_options {
         bedtools  => '/nfs/1000g-work/G1K/work/bin/bedtools2-2.20.1/bin/bedtools',
         bedToBigBedPath => '/nfs/1000g-work/G1K/work/davidr/pipeline-deps/bin/bedToBigBed',
 
-        chr_file => '/nfs/1000g-work/G1K/work/avikd/test_dir/test_grch38/no_alt_no_decoy_bwa/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa.fai',
+        chr_file => '/nfs/1000g-work/ihec/work/bp_pipe/pipeline_run/reference_dir/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa.fai',
 
         dir_label_params_list => ["sample_alias", "experiment_source_id"],  
 
-       # hotspot_bed_type    => 'DNASE_HOTSPOT_BED',
-       # hotspot_bigbed_type => 'DNASE_HOTSPOT_BB',
-       # peak_bed_type       => 'DNASE_HOTSPOT_PEAK_BED',
+        hotspot_bed_type    => $self->o('hotspot_bed_type'),
+        hotspot_bigbed_type => $self->o('hotspot_bigbed_type'),
+        peak_bed_type       => $self->o('peak_bed_type'),
 
         hotspot_bed_type    => undef,
         hotspot_bigbed_type => undef,
