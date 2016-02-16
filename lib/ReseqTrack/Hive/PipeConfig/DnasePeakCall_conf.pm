@@ -167,7 +167,10 @@ sub pipeline_analyses {
             -analysis_capacity  =>  50,
             -hive_capacity  =>  200,
             -flow_into => {
-                1 => [ 'hotspot_stats' ],
+                1 => { 'hotspot_stats' => { 'hotspot_bed' => '#hotspot_bed#', 
+                                            'peak_bed'    => '#peak_bed#',
+                                          }, 
+                     },
             },
       });
     push(@analyses, {
