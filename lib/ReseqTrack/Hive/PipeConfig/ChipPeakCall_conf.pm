@@ -125,6 +125,7 @@ sub pipeline_wide_parameters {
     return {
         %{$self->SUPER::pipeline_wide_parameters},
 
+        dir_label_params => $self->o('dir_label_params_list'),
 
     };
 }

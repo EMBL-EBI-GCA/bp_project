@@ -34,7 +34,8 @@ sub default_options {
                              tag_length => 'K36',
                              fdr        => 0.05,
                              dupok      => 'T',      # allow duplicates
-                             chk_chr    => 'chr1'
+                             chk_chr    => 'chr1',
+                             gzip       => 1
                            },
  
         samtools  => '/nfs/1000g-work/G1K/work/bin/samtools/samtools',
@@ -90,8 +91,8 @@ sub pipeline_wide_parameters {
     my ($self) = @_;
     return {
         %{$self->SUPER::pipeline_wide_parameters},
-
-
+        
+        dir_label_params => $self->o('dir_label_params_list'),
     };
 }
 
