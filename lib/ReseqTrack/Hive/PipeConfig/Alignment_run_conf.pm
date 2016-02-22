@@ -43,7 +43,7 @@ sub default_options {
             path_names_array               => $self->o('path_names_array'),
           },
 
-          
+         regexs               => $self->o('regexs'), 
          type_fastq           => $self->o('type_fastq'),
          metadata_file        => $self->o('metadata_file'),
          path_names_array     => [ 'sample_desc_1', 'sample_desc_2', 'sample_desc_3', 'library_strategy', 'center_name' ],
@@ -207,7 +207,8 @@ sub pipeline_analyses {
             -module        => 'ReseqTrack::Hive::Process::SplitFastq',
             -parameters    => {
                 program_file => $self->o('split_exe'),
-                max_reads => $self->o('chunk_max_reads'),
+                max_reads    => $self->o('chunk_max_reads'),
+                regexs       => $self->o('regexs'),
             },
             -rc_name => '200Mb',
             -analysis_capacity  =>  4,
