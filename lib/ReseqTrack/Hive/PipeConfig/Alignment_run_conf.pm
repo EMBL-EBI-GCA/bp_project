@@ -43,6 +43,7 @@ sub default_options {
             path_names_array               => $self->o('path_names_array'),
           },
 
+         regexs               => undef,
          regexs               => $self->o('regexs'), 
          type_fastq           => $self->o('type_fastq'),
          metadata_file        => $self->o('metadata_file'),
