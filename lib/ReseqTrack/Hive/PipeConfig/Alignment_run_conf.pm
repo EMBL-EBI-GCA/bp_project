@@ -44,7 +44,6 @@ sub default_options {
           },
 
          regexs               => undef,
-         regexs               => $self->o('regexs'), 
          type_fastq           => $self->o('type_fastq'),
          metadata_file        => $self->o('metadata_file'),
          path_names_array     => [ 'sample_desc_1', 'sample_desc_2', 'sample_desc_3', 'library_strategy', 'center_name' ],
