@@ -66,7 +66,7 @@ sub write_excel{
 
   my @header = qw/ EPIRR_ID EPIRR_STATUS SAMPLE_GROUP CBR_DONOR_ID DONOR_ID SAMPLE_NAME CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
   push @header, @$exp_list;
-  print join ( "\t", @header),$/;
+  print join ( "\t", @header, 'CURRENT_EPIGENOME_STATUS'),$/;
 
   foreach my $key( keys %$mapped_data ){
     exists $$mapped_data{$key}{'EPIRR_ID'} ? print join(";", keys %{$$mapped_data{$key}{'EPIRR_ID'}}),"\t"
@@ -89,49 +89,70 @@ sub write_excel{
                                           : print "-\t";
     exists $$mapped_data{$key}{'TREATMENT'} ? print join(";", keys %{$$mapped_data{$key}{'TREATMENT'}}),"\t"
                                             : print "-\t";
+    my $full_epigenome_count = 0;
+
+    my @exp_lines;
     foreach my $exp_name ( @$exp_list ){
+      my $exp_line;
       if ( exists ( $$mapped_data{$key}{'EXP'}{$exp_name}) ){
-        print join(";",@{$$mapped_data{$key}{'EXP'}{$exp_name}});
+        $exp_line = join(";",@{$$mapped_data{$key}{'EXP'}{$exp_name}});
 
         my $label = get_label( $$mapped_data{$key}{'EXP'}{$exp_name}, $chip_qc );
-        print $label if $label;
-
-        print "\t"; 
+        if ( $label ){
+          $exp_line .= $label;
+         
+          if ( $label =~ /FAIL/){
+            $full_epigenome_count++ if $label =~ /NOT_ALL_FAILED/; 
+          }
+          else {
+            $full_epigenome_count++;
+          }
+        
+          #print "\t";
+        } 
+        else {
+          $full_epigenome_count++;
+        }
       }
       else { 
-        print '-',"\t";
+        #print '-',"\t";
+        $exp_line = '-';
       }
+      push @exp_lines, $exp_line;
     }
-    print $/;
+    print join ("\t", @exp_lines);
+
+    my $current_status = 'Incomplete';
+    $current_status = 'Complete'
+      if $full_epigenome_count == 9;
+    $current_status = '-' 
+      if exists $$mapped_data{$key}{'SAMPLE_GROUP'};
+    $current_status = '-' 
+       if exists $$mapped_data{$key}{'TREATMENT'};
+    print "\t",$current_status,$/;
   }
 }
 
 sub get_label{
   my ( $exps, $chip_qc ) = @_;
   my $label = undef;
+  my $pass_count = 0;
+  my $fail_count = 0;
 
   foreach my $exp (@$exps){
     next if $exp eq '-';
     next unless exists $$chip_qc{$exp};
     my $chip_qc_label = $$chip_qc{$exp};
-
     if ( $chip_qc_label eq 'PASS'){
-      $label .= ' : NOT_ALL_FAILED' if $label;
+      $pass_count++;
     }
     else {
+      $fail_count++;
       $label .= ' : '.$chip_qc_label;
     }
-
-#    if ($label && $label ne 'PASS' ){
-#      $chip_qc_label eq 'PASS'
-#          ? $label .= ' : NOT_ALL_FAILED'
-#          : $label .= ' : '.$chip_qc_label;
-#    }
-#    else {
-#      $label = $chip_qc_label
-#         unless $chip_qc_label eq 'PASS';
-#    }
   }
+  $label .= ' : NOT_ALL_FAILED'
+   if $pass_count > 0 && $fail_count > 0;
   return $label;
 }
 
@@ -154,6 +175,9 @@ sub get_chip_qc{
     elsif ( $$row{'BP_QC_v2_reads'} ne "FAIL" && $$row{'BP_QC_v2_frip'} eq 'FAIL' ) {
       $chip_qc{$exp_id} = 'FRIP_FAIL';
     }
+    elsif ( $$row{'BP_QC_v2_reads'} ne "FAIL" && $$row{'BP_QC_v2_frip'} ne 'FAIL' && $$row{'BP_QC_v2_RSC'} eq 'CAUTION' ) {
+      $chip_qc{$exp_id} = 'PPQT_RSC_FAIL';
+    }
     else {
       $chip_qc{$exp_id} = 'PASS';
     }
@@ -167,6 +191,7 @@ sub modify_desc{
   $value =~ s/[ ,;()=]/_/g;
   $value =~ s/_\//\//g;
   $value =~ s/_+/_/g;
+  $value = uc( $value );
   return $value;
 }
 
@@ -177,8 +202,11 @@ sub map_data{
   foreach my $exp ( keys %{$data} ){
     my $check_ena_status = $$data{$exp}{'EXPERIMENT_STATUS'};
     next unless $check_ena_status eq 'private' or  
-            $check_ena_status eq 'public';            # remove suppressed experiments in EGA
-   
+            $check_ena_status eq 'public';                  # remove suppressed experiments in EGA
+    my $check_sample_status = $$data{$exp}{'SAMPLE_STATUS'};
+    next unless $check_sample_status eq 'private' or
+            $check_sample_status eq 'public';               # remove suppressed samples in EGA 
+
     if ( exists ($$epirr_data{$exp} )){
       my $epirr_id = $$epirr_data{$exp};
       $$data{$exp}{'EPIRR_ID'}=$epirr_id;
@@ -197,6 +225,9 @@ sub map_data{
 
     my $exp_type     = $$data{$exp}{'EXPERIMENT_TYPE'};
     my $lib_strategy = $$data{$exp}{'LIBRARY_STRATEGY'};
+    next unless $lib_strategy eq 'Bisulfite-Seq' or 
+                $lib_strategy eq 'ChIP-Seq' or
+                $lib_strategy eq 'RNA-Seq';         # filter library strategy
 
     push (@{$mapped_data{$key}{'EXP'}{$exp_type}},$exp)
       if $lib_strategy eq 'ChIP-Seq';
@@ -225,7 +256,7 @@ sub map_data{
        if $cell_line;
     my $treatment   = $$data{$exp}{'TREATMENT'};
     $mapped_data{$key}{'TREATMENT'}{$treatment}++
-       if $treatment;
+       if $treatment &&  $treatment =~ /^(NA|NONE)$/i ;
     my $disease     = $$data{$exp}{'DISEASE'};
     $mapped_data{$key}{'DISEASE'}{$disease}++
        if $disease ne '-';
