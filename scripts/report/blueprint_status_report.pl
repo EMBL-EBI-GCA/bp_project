@@ -256,7 +256,7 @@ sub map_data{
        if $cell_line;
     my $treatment   = $$data{$exp}{'TREATMENT'};
     $mapped_data{$key}{'TREATMENT'}{$treatment}++
-       if $treatment &&  $treatment =~ /^(NA|NONE)$/i ;
+       if $treatment &&  $treatment !~ /^(NA|NONE|-)$/i ;
     my $disease     = $$data{$exp}{'DISEASE'};
     $mapped_data{$key}{'DISEASE'}{$disease}++
        if $disease ne '-';
