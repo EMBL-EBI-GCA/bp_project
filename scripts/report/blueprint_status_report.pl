@@ -24,6 +24,7 @@ my $dbport;
 my $dbname;
 my $dbuser;
 my $dbpass;
+my $xls_output_file;
 
 GetOptions( 'metadata_tab=s'    => \$metadata_tab,
             'era_user=s'        => \$era_user,
@@ -36,6 +37,7 @@ GetOptions( 'metadata_tab=s'    => \$metadata_tab,
             'dbname=s'          => \$dbname,
             'dbuser=s'          => \$dbuser,
             'dbpass=s'          => \$dbpass,
+            'output=s'          => \$xls_output_file,
           );
 
 my @era_conn = ( $era_user, $era_pass );
@@ -59,69 +61,97 @@ my $epirr_data              = read_epirr( $epirr_index );
 my $non_ref_list            = read_list( $non_ref_samples );
 my $mapped_data             = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh );
 
-write_excel( $mapped_data, \@exp_list, \@chip_list, $chip_qc );
+write_excel( $mapped_data, \@exp_list, \@chip_list, $chip_qc , $xls_output_file );
 
 sub write_excel{
-  my ( $mapped_data, $exp_list, $chip_list, $chip_qc ) = @_;
+  my ( $mapped_data, $exp_list, $chip_list, $chip_qc, $xls_output_file ) = @_;
+
+  my $workbook = Spreadsheet::WriteExcel->new( $xls_output_file );
+  my $worksheet = $workbook->add_worksheet( 'sample status report' ); 
+  my $read_fail_format = $workbook->add_format();                          ## QC fail label formats
+  $read_fail_format->set_bg_color('red');
+  my $frip_fail_format = $workbook->add_format();
+  $frip_fail_format->set_bg_color('magenta');
+  my $both_fail_format = $workbook->add_format();
+  $both_fail_format->set_bg_color('purple');
+  my $ppqt_fail_format = $workbook->add_format();
+  $ppqt_fail_format->set_bg_color('yellow');
+  my $not_all_fail_format = $workbook->add_format();
+  $not_all_fail_format->set_bg_color('lime');
+
+  my %format_hash = ( PPQT_RSC_FAIL            => $ppqt_fail_format,
+                      READ_COUNT_FAIL          => $read_fail_format,
+                      FRIP_FAIL                => $frip_fail_format,
+                      READ_COUNT_AND_FRIP_FAIL => $both_fail_format,
+                      NOT_ALL_FAILED           => $not_all_fail_format,
+                    );
+  my $row = 0;
+  my $col = 0;
 
   my @header = qw/ EPIRR_ID EPIRR_STATUS SAMPLE_GROUP CBR_DONOR_ID DONOR_ID SAMPLE_NAME CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
   push @header, @$exp_list;
-  print join ( "\t", @header, 'CURRENT_EPIGENOME_STATUS'),$/;
+  push @header, 'CURRENT_EPIGENOME_STATUS';
+  $worksheet->write_row( $row, $col, \@header); 
+  $row++;
 
   foreach my $key( keys %$mapped_data ){
-    exists $$mapped_data{$key}{'EPIRR_ID'} ? print join(";", keys %{$$mapped_data{$key}{'EPIRR_ID'}}),"\t"
-                                           : print "-\t";
-    exists $$mapped_data{$key}{'EPIRR_STATUS'} ? print join(";", keys %{$$mapped_data{$key}{'EPIRR_STATUS'}}),"\t"
-                                           : print "-\t";
-    exists $$mapped_data{$key}{'SAMPLE_GROUP'} ? print $$mapped_data{$key}{'SAMPLE_GROUP'},"\t"
-                                               : print "-\t";
-    print join(";", keys %{$$mapped_data{$key}{'CBR_DONOR_ID'}}),"\t";
-    print join(";", keys %{$$mapped_data{$key}{'DONOR_ID'}}),"\t";
-    print join(";",keys %{$$mapped_data{$key}{'SAMPLE_NAME'}}),"\t";
-
-    exists $$mapped_data{$key}{'CELL_TYPE'} ? print join(";", keys %{$$mapped_data{$key}{'CELL_TYPE'}}),"\t"
-                                            : print "-\t";
-    exists $$mapped_data{$key}{'TISSUE_TYPE'} ? print join(";", keys %{$$mapped_data{$key}{'TISSUE_TYPE'}}),"\t"
-                                              : print "-\t";
-    exists $$mapped_data{$key}{'CELL_LINE'} ? print join(";", keys %{$$mapped_data{$key}{'CELL_LINE'}}),"\t"
-                                            : print "-\t";
-    exists $$mapped_data{$key}{'DISEASE'} ? print join(";", keys %{$$mapped_data{$key}{'DISEASE'}}),"\t"
-                                          : print "-\t";
-    exists $$mapped_data{$key}{'TREATMENT'} ? print join(";", keys %{$$mapped_data{$key}{'TREATMENT'}}),"\t"
-                                            : print "-\t";
+    my @line;
+    exists $$mapped_data{$key}{'EPIRR_ID'} ? push @line,join(";", keys %{$$mapped_data{$key}{'EPIRR_ID'}})
+                                           : push @line, "-";
+    exists $$mapped_data{$key}{'EPIRR_STATUS'} ? push @line, join(";", keys %{$$mapped_data{$key}{'EPIRR_STATUS'}})
+                                               : push @line, "-";
+    exists $$mapped_data{$key}{'SAMPLE_GROUP'} ? push @line,$$mapped_data{$key}{'SAMPLE_GROUP'}
+                                               : push @line, "-";
+    push @line, join(";", keys %{$$mapped_data{$key}{'CBR_DONOR_ID'}});
+    push @line, join(";", keys %{$$mapped_data{$key}{'DONOR_ID'}});
+    push @line, join(";",keys %{$$mapped_data{$key}{'SAMPLE_NAME'}});
+    exists $$mapped_data{$key}{'CELL_TYPE'} ? push @line, join(";", keys %{$$mapped_data{$key}{'CELL_TYPE'}})
+                                            : push @line, "-";
+    exists $$mapped_data{$key}{'TISSUE_TYPE'} ? push @line, join(";", keys %{$$mapped_data{$key}{'TISSUE_TYPE'}})
+                                              : push @line, "-";
+    exists $$mapped_data{$key}{'CELL_LINE'} ? push @line,join(";", keys %{$$mapped_data{$key}{'CELL_LINE'}})
+                                            : push @line, "-";
+    exists $$mapped_data{$key}{'DISEASE'} ? push @line, join(";", keys %{$$mapped_data{$key}{'DISEASE'}})
+                                          : push @line, "-";
+    exists $$mapped_data{$key}{'TREATMENT'} ? push @line, join(";", keys %{$$mapped_data{$key}{'TREATMENT'}})
+                                            : push @line, "-";
     my $full_epigenome_count = 0;
+    $col = 0;                                    # set column count
+    $worksheet->write_row( $row, $col, \@line);  # write descriptions
+    $col = scalar @line;                         # reset column count
 
     my @exp_lines;
     foreach my $exp_name ( @$exp_list ){
       my $exp_line;
+      my $format = undef;
+      my $label = undef;
+
       if ( exists ( $$mapped_data{$key}{'EXP'}{$exp_name}) ){
         $exp_line = join(";",@{$$mapped_data{$key}{'EXP'}{$exp_name}});
 
-        my $label = get_label( $$mapped_data{$key}{'EXP'}{$exp_name}, $chip_qc );
+        $label  = get_label( $$mapped_data{$key}{'EXP'}{$exp_name}, $chip_qc );
+        $format = decide_format( $label, \%format_hash );
+
         if ( $label ){
-          $exp_line .= $label;
-         
+          $exp_line .= $label; 
           if ( $label =~ /FAIL/){
             $full_epigenome_count++ if $label =~ /NOT_ALL_FAILED/; 
           }
           else {
             $full_epigenome_count++;
           }
-        
-          #print "\t";
         } 
         else {
           $full_epigenome_count++;
         }
       }
       else { 
-        #print '-',"\t";
         $exp_line = '-';
       }
-      push @exp_lines, $exp_line;
+      $worksheet->write( $row, $col, $exp_line, $format );
+      $col++;
     }
-    print join ("\t", @exp_lines);
-
+    
     my $current_status = 'Incomplete';
     $current_status = 'Complete'
       if $full_epigenome_count == 9;
@@ -129,8 +159,29 @@ sub write_excel{
       if exists $$mapped_data{$key}{'SAMPLE_GROUP'};
     $current_status = '-' 
        if exists $$mapped_data{$key}{'TREATMENT'};
-    print "\t",$current_status,$/;
+    $worksheet->write( $row, $col, $current_status ); 
+    $row++;
   }
+  $workbook->close();
+}
+
+sub decide_format {
+  my ( $label, $format_hash ) = @_;
+  my $format = undef;
+  if ( $label && $label ne ''  && $label  !~ /^\s+$/ ){
+    if ( $label =~ /NOT_ALL_FAILED/i ){
+      $format=$$format_hash{NOT_ALL_FAILED};
+    }
+    else {
+      $label     =~ s/^\s+:\s+//g;
+      my @labels = split ":", $label;
+      $labels[0] =~ s/\s+//g;
+      die "No rules for formating: $label",$/ 
+          unless exists $$format_hash{$labels[0]};
+      $format=$$format_hash{$labels[0]};
+    }
+  }
+  return $format;
 }
 
 sub get_label{
@@ -301,7 +352,6 @@ sub read_list{
   close($fh);
   return \%list;
 }
-
 
 sub read_epirr{
   my ( $file ) = @_;
