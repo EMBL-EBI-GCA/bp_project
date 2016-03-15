@@ -88,9 +88,11 @@ sub write_excel{
   my $row = 0;
   my $col = 0;
 
+  my %full_chip_hash = map{ $_ => 1 } @$chip_list;
+
   my @header = qw/ EPIRR_ID EPIRR_STATUS SAMPLE_GROUP CBR_DONOR_ID DONOR_ID SAMPLE_NAME CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
   push @header, @$exp_list;
-  push @header, 'CURRENT_EPIGENOME_STATUS';
+  push @header, 'CURRENT_EPIGENOME_STATUS', 'FULL_CHIP';
   $worksheet->write_row( $row, $col, \@header); 
   $row++;
 
@@ -116,6 +118,7 @@ sub write_excel{
     exists $$mapped_data{$key}{'TREATMENT'} ? push @line, join(";", keys %{$$mapped_data{$key}{'TREATMENT'}})
                                             : push @line, "-";
     my $full_epigenome_count = 0;
+    my $full_chip_count      = 0;
     $col = 0;                                    # set column count
     $worksheet->write_row( $row, $col, \@line);  # write descriptions
     $col = scalar @line;                         # reset column count
@@ -136,13 +139,16 @@ sub write_excel{
           $exp_line .= $label; 
           if ( $label =~ /FAIL/){
             $full_epigenome_count++ if $label =~ /NOT_ALL_FAILED/; 
+            $full_chip_count++ if $label =~ /NOT_ALL_FAILED/ && exists $full_chip_hash{$exp_name};
           }
           else {
             $full_epigenome_count++;
+            $full_chip_count++ if exists $full_chip_hash{$exp_name};
           }
         } 
         else {
           $full_epigenome_count++;
+          $full_chip_count++ if exists $full_chip_hash{$exp_name};
         }
       }
       else { 
@@ -160,6 +166,17 @@ sub write_excel{
     $current_status = '-' 
        if exists $$mapped_data{$key}{'TREATMENT'};
     $worksheet->write( $row, $col, $current_status ); 
+    $col++;
+
+    my $full_chip_status = 0;
+    $full_chip_status = 1
+      if $full_chip_count == 7;
+    $full_chip_status = 0
+      if exists $$mapped_data{$key}{'SAMPLE_GROUP'};
+    $full_chip_status = 1
+      if exists $$mapped_data{$key}{'TREATMENT'} && $full_chip_count == 6;
+    $worksheet->write( $row, $col, $full_chip_status );
+
     $row++;
   }
   $workbook->close();
