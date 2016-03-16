@@ -54,17 +54,19 @@ my @chip_list = ( 'Input',   'H3K4me3',  'H3K4me1', 'H3K9me3',
                   'H3K27ac', 'H3K27me3', 'H3K36me3' );
 my @exp_list  = ( 'Bisulfite-Seq', 'RNA-Seq' );
 push @exp_list, @chip_list;
+my @readcount_list = ( 'Input_mapped_read',   'H3K4me3_mapped_read',  'H3K4me1_mapped_read', 'H3K9me3_mapped_read',
+                       'H3K27ac_mapped_read', 'H3K27me3_mapped_read', 'H3K36me3_mapped_read' );
 
-my $chip_qc                 = get_chip_qc( $dbh );
-my ( $data, $index_header ) = read_metadata( $metadata_tab, $key_string );
-my $epirr_data              = read_epirr( $epirr_index );
-my $non_ref_list            = read_list( $non_ref_samples );
-my $mapped_data             = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh );
+my ( $chip_qc, $chip_read_count )  = get_chip_qc( $dbh );
+my ( $data, $index_header )        = read_metadata( $metadata_tab, $key_string );
+my $epirr_data                     = read_epirr( $epirr_index );
+my $non_ref_list                   = read_list( $non_ref_samples );
+my $mapped_data                    = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh );
 
-write_excel( $mapped_data, \@exp_list, \@chip_list, $chip_qc , $xls_output_file );
+write_excel( $mapped_data, \@exp_list, \@chip_list, $chip_qc , $xls_output_file, \@readcount_list, $chip_read_count );
 
 sub write_excel{
-  my ( $mapped_data, $exp_list, $chip_list, $chip_qc, $xls_output_file ) = @_;
+  my ( $mapped_data, $exp_list, $chip_list, $chip_qc, $xls_output_file, $readcount_list, $chip_read_count ) = @_;
 
   my $workbook = Spreadsheet::WriteExcel->new( $xls_output_file );
   my $worksheet = $workbook->add_worksheet( 'sample status report' ); 
@@ -91,7 +93,7 @@ sub write_excel{
   my %full_chip_hash = map{ $_ => 1 } @$chip_list;
 
   my @header = qw/ EPIRR_ID EPIRR_STATUS SAMPLE_GROUP CBR_DONOR_ID DONOR_ID SAMPLE_NAME CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
-  push @header, @$exp_list;
+  push @header, @$exp_list, @$readcount_list;
   push @header, 'CURRENT_EPIGENOME_STATUS', 'FULL_CHIP';
   $worksheet->write_row( $row, $col, \@header); 
   $row++;
@@ -123,17 +125,23 @@ sub write_excel{
     $worksheet->write_row( $row, $col, \@line);  # write descriptions
     $col = scalar @line;                         # reset column count
 
+    my %chip_read_count_per_exp;
     my @exp_lines;
     foreach my $exp_name ( @$exp_list ){
       my $exp_line;
       my $format = undef;
       my $label = undef;
-
+    
       if ( exists ( $$mapped_data{$key}{'EXP'}{$exp_name}) ){
         $exp_line = join(";",@{$$mapped_data{$key}{'EXP'}{$exp_name}});
-
+     
         $label  = get_label( $$mapped_data{$key}{'EXP'}{$exp_name}, $chip_qc );
         $format = decide_format( $label, \%format_hash );
+
+        foreach my $exp_id ( @{$$mapped_data{$key}{'EXP'}{$exp_name}} ){
+          push @{$chip_read_count_per_exp{$exp_name.'_mapped_read'}}, $$chip_read_count{$exp_id}
+               if exists $$chip_read_count{$exp_id};
+        }
 
         if ( $label ){
           $exp_line .= $label; 
@@ -157,6 +165,16 @@ sub write_excel{
       $worksheet->write( $row, $col, $exp_line, $format );
       $col++;
     }
+    
+    foreach my $chip_exp_name ( @$readcount_list ){
+      my $read_count_line = '-';
+      $read_count_line = join (";", @{$chip_read_count_per_exp{$chip_exp_name}})
+                         if exists $chip_read_count_per_exp{$chip_exp_name} && 
+                                   ref $chip_read_count_per_exp{$chip_exp_name} eq 'ARRAY';
+      $worksheet->write( $row, $col, $read_count_line );
+      $col++; 
+    }
+
     
     my $current_status = 'Incomplete';
     $current_status = 'Complete'
@@ -227,13 +245,20 @@ sub get_label{
 sub get_chip_qc{
   my ( $dbh ) = @_;
   my %chip_qc;
+  my %chip_read_count;
   my $sth = $dbh->prepare( "select  * from chip_qc_view" ) or die "Couldn't prepare statement: " . $dbh->errstr;
   $sth->execute( ) or die "couldn't run execute: " . $sth->errstr;
   die "No rows matched" if $sth->rows == 0;
 
   while ( my $row = $sth->fetchrow_hashref() ) {
     die "No exp id found" unless exists $$row{experiment_source_id};
-    my $exp_id = $$row{experiment_source_id};
+    my $exp_id     = $$row{experiment_source_id};
+
+    my $read_count = undef;
+    $read_count =  $$row{unique_reads_post_filter} 
+                   if exists $$row{unique_reads_post_filter};
+    $chip_read_count{$exp_id} = $read_count;
+
     if ( $$row{'BP_QC_v2_reads'} eq "FAIL" && $$row{'BP_QC_v2_frip'} eq 'FAIL' ) {
       $chip_qc{$exp_id} = 'READ_COUNT_AND_FRIP_FAIL';
     }
@@ -250,7 +275,7 @@ sub get_chip_qc{
       $chip_qc{$exp_id} = 'PASS';
     }
   }
-  return \%chip_qc;
+  return \%chip_qc, \%chip_read_count;
 }
 
 sub modify_desc{
