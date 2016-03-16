@@ -25,6 +25,7 @@ my $dbname;
 my $dbuser;
 my $dbpass;
 my $xls_output_file;
+my $print_number = undef;
 
 GetOptions( 'metadata_tab=s'    => \$metadata_tab,
             'era_user=s'        => \$era_user,
@@ -38,6 +39,7 @@ GetOptions( 'metadata_tab=s'    => \$metadata_tab,
             'dbuser=s'          => \$dbuser,
             'dbpass=s'          => \$dbpass,
             'output=s'          => \$xls_output_file,
+            'print_number'      => \$print_number,
           );
 
 my @era_conn = ( $era_user, $era_pass );
@@ -63,10 +65,28 @@ my $epirr_data                     = read_epirr( $epirr_index );
 my $non_ref_list                   = read_list( $non_ref_samples );
 my $mapped_data                    = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh );
 
-write_excel( $mapped_data, \@exp_list, \@chip_list, $chip_qc , $xls_output_file, \@readcount_list, $chip_read_count );
+my %options = ( mapped_data     => $mapped_data, 
+                exp_list        => \@exp_list,
+                chip_list       => \@chip_list,
+                chip_qc         => $chip_qc,
+                xls_output      => $xls_output_file,
+                readcount_list  => \@readcount_list,
+                chip_read_count => $chip_read_count,
+                print_number    => $print_number,
+              );
+write_excel( \%options );
 
 sub write_excel{
-  my ( $mapped_data, $exp_list, $chip_list, $chip_qc, $xls_output_file, $readcount_list, $chip_read_count ) = @_;
+  my ( $options ) = @_;
+ 
+  my $mapped_data     = $$options{mapped_data};
+  my $exp_list        = $$options{exp_list};
+  my $chip_list       = $$options{chip_list};
+  my $chip_qc         = $$options{chip_qc};
+  my $xls_output_file = $$options{xls_output};
+  my $readcount_list  = $$options{readcount_list};
+  my $chip_read_count = $$options{chip_read_count};
+  my $print_number    = $$options{print_number};
 
   my $workbook = Spreadsheet::WriteExcel->new( $xls_output_file );
   my $worksheet = $workbook->add_worksheet( 'sample status report' ); 
@@ -130,12 +150,14 @@ sub write_excel{
     foreach my $exp_name ( @$exp_list ){
       my $exp_line;
       my $format = undef;
-      my $label = undef;
+      my $label        = undef;
+      my $pass_count   = undef;
+      my  $total_count = undef;
     
       if ( exists ( $$mapped_data{$key}{'EXP'}{$exp_name}) ){
         $exp_line = join(";",@{$$mapped_data{$key}{'EXP'}{$exp_name}});
      
-        $label  = get_label( $$mapped_data{$key}{'EXP'}{$exp_name}, $chip_qc );
+        ( $label, $pass_count, $total_count )  = get_label( $$mapped_data{$key}{'EXP'}{$exp_name}, $chip_qc );
         $format = decide_format( $label, \%format_hash );
 
         foreach my $exp_id ( @{$$mapped_data{$key}{'EXP'}{$exp_name}} ){
@@ -162,7 +184,14 @@ sub write_excel{
       else { 
         $exp_line = '-';
       }
-      $worksheet->write( $row, $col, $exp_line, $format );
+      if ( $print_number ){
+        my $count_line = defined $pass_count ? $pass_count.'/'.$total_count: $total_count;
+        
+        $worksheet->write( $row, $col, $count_line, $format );
+      }
+      else {
+        $worksheet->write( $row, $col, $exp_line, $format );
+      }
       $col++;
     }
     
@@ -191,8 +220,8 @@ sub write_excel{
       if $full_chip_count == 7;
     $full_chip_status = 0
       if exists $$mapped_data{$key}{'SAMPLE_GROUP'};
-    $full_chip_status = 1
-      if exists $$mapped_data{$key}{'TREATMENT'} && $full_chip_count == 6;
+    $full_chip_status = 0
+      if exists $$mapped_data{$key}{'TREATMENT'};
     $worksheet->write( $row, $col, $full_chip_status );
 
     $row++;
@@ -224,6 +253,7 @@ sub get_label{
   my $label = undef;
   my $pass_count = 0;
   my $fail_count = 0;
+  my $total_count = scalar @$exps;
 
   foreach my $exp (@$exps){
     next if $exp eq '-';
@@ -239,7 +269,7 @@ sub get_label{
   }
   $label .= ' : NOT_ALL_FAILED'
    if $pass_count > 0 && $fail_count > 0;
-  return $label;
+  return $label, $pass_count, $total_count;
 }
 
 sub get_chip_qc{
@@ -257,7 +287,8 @@ sub get_chip_qc{
     my $read_count = undef;
     $read_count =  $$row{unique_reads_post_filter} 
                    if exists $$row{unique_reads_post_filter};
-    $chip_read_count{$exp_id} = $read_count;
+    $chip_read_count{$exp_id} = $read_count 
+                                if $read_count;
 
     if ( $$row{'BP_QC_v2_reads'} eq "FAIL" && $$row{'BP_QC_v2_frip'} eq 'FAIL' ) {
       $chip_qc{$exp_id} = 'READ_COUNT_AND_FRIP_FAIL';
