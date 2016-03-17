@@ -59,21 +59,22 @@ push @exp_list, @chip_list;
 my @readcount_list = ( 'Input_mapped_read',   'H3K4me3_mapped_read',  'H3K4me1_mapped_read', 'H3K9me3_mapped_read',
                        'H3K27ac_mapped_read', 'H3K27me3_mapped_read', 'H3K36me3_mapped_read' );
 
-my ( $chip_qc, $chip_read_count )  = get_chip_qc( $dbh );
-my ( $data, $index_header )        = read_metadata( $metadata_tab, $key_string );
-my $epirr_data                     = read_epirr( $epirr_index );
-my $non_ref_list                   = read_list( $non_ref_samples );
-my $mapped_data                    = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh );
+my ( $chip_qc, $chip_qc_count )  = get_chip_qc( $dbh );
+my ( $data, $index_header )      = read_metadata( $metadata_tab, $key_string );
+my $epirr_data                   = read_epirr( $epirr_index );
+my $non_ref_list                 = read_list( $non_ref_samples );
+my $mapped_data                  = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh );
 
-my %options = ( mapped_data     => $mapped_data, 
-                exp_list        => \@exp_list,
-                chip_list       => \@chip_list,
-                chip_qc         => $chip_qc,
-                xls_output      => $xls_output_file,
-                readcount_list  => \@readcount_list,
-                chip_read_count => $chip_read_count,
-                print_number    => $print_number,
+my %options = ( mapped_data    => $mapped_data, 
+                exp_list       => \@exp_list,
+                chip_list      => \@chip_list,
+                chip_qc        => $chip_qc,
+                xls_output     => $xls_output_file,
+                readcount_list => \@readcount_list,
+                chip_qc_count  => $chip_qc_count,
+                print_number   => $print_number,
               );
+
 write_excel( \%options );
 
 sub write_excel{
@@ -85,7 +86,7 @@ sub write_excel{
   my $chip_qc         = $$options{chip_qc};
   my $xls_output_file = $$options{xls_output};
   my $readcount_list  = $$options{readcount_list};
-  my $chip_read_count = $$options{chip_read_count};
+  my $chip_qc_count   = $$options{chip_qc_count};
   my $print_number    = $$options{print_number};
 
   my $workbook = Spreadsheet::WriteExcel->new( $xls_output_file );
@@ -113,7 +114,20 @@ sub write_excel{
   my %full_chip_hash = map{ $_ => 1 } @$chip_list;
 
   my @header = qw/ EPIRR_ID EPIRR_STATUS SAMPLE_GROUP CBR_DONOR_ID DONOR_ID SAMPLE_NAME CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
-  push @header, @$exp_list, @$readcount_list;
+
+  if ( $print_number ){
+    my @extended_header;
+    foreach my $exp ( @$exp_list ){
+      push @extended_header, $exp, $exp.'_EXP';
+      push @extended_header, $exp.'_QC_PASS_EXP', $exp.'_read_count', $exp.'_frip_count', $exp.'_ppqt_rsc'
+           if exists $full_chip_hash{$exp};
+    }
+    push @header, @extended_header;
+  }
+  else {
+    push @header, @$exp_list;
+  }
+
   push @header, 'CURRENT_EPIGENOME_STATUS', 'FULL_CHIP';
   $worksheet->write_row( $row, $col, \@header); 
   $row++;
@@ -145,7 +159,7 @@ sub write_excel{
     $worksheet->write_row( $row, $col, \@line);  # write descriptions
     $col = scalar @line;                         # reset column count
 
-    my %chip_read_count_per_exp;
+    my %chip_qc_count_per_exp;
     my @exp_lines;
     foreach my $exp_name ( @$exp_list ){
       my $exp_line;
@@ -161,8 +175,14 @@ sub write_excel{
         $format = decide_format( $label, \%format_hash );
 
         foreach my $exp_id ( @{$$mapped_data{$key}{'EXP'}{$exp_name}} ){
-          push @{$chip_read_count_per_exp{$exp_name.'_mapped_read'}}, $$chip_read_count{$exp_id}
-               if exists $$chip_read_count{$exp_id};
+          push @{$chip_qc_count_per_exp{$exp_name}{read_count}}, $$chip_qc_count{$exp_id}{read_count}
+               if exists $$chip_qc_count{$exp_id}{read_count};
+
+          push @{$chip_qc_count_per_exp{$exp_name}{frip}}, $$chip_qc_count{$exp_id}{frip}
+               if exists $$chip_qc_count{$exp_id}{frip};
+
+          push @{$chip_qc_count_per_exp{$exp_name}{rsc}}, $$chip_qc_count{$exp_id}{rsc}
+               if exists $$chip_qc_count{$exp_id}{rsc};  
         }
 
         if ( $label ){
@@ -184,26 +204,43 @@ sub write_excel{
       else { 
         $exp_line = '-';
       }
+
+      $worksheet->write( $row, $col, $exp_line, $format );
+      
       if ( $print_number ){
-        my $count_line = defined $pass_count ? $pass_count.'/'.$total_count: $total_count;
+        my $count_line = $total_count ? 1 : 0;
+        $col++;  
+        $worksheet->write( $row, $col, $count_line, $format );     ## printing exp column
+        if ( exists ( $full_chip_hash{$exp_name} )){
+          $col++;
+          $pass_count = $pass_count ? 1 : 0;
+          $worksheet->write( $row, $col, $pass_count, $format );   ## printing QC pass column
+          $col++;
         
-        $worksheet->write( $row, $col, $count_line, $format );
-      }
-      else {
-        $worksheet->write( $row, $col, $exp_line, $format );
+          my $read_count = exists $chip_qc_count_per_exp{$exp_name}{read_count} &&
+                           ref $chip_qc_count_per_exp{$exp_name}{read_count} eq 'ARRAY' ?
+                           join (";", @{$chip_qc_count_per_exp{$exp_name}{read_count}}) : '-';
+                      
+          $worksheet->write( $row, $col, $read_count, $format );   ## printing read count column
+          $col++;
+         
+          my $frip       = exists $chip_qc_count_per_exp{$exp_name}{frip} && 
+                           ref $chip_qc_count_per_exp{$exp_name}{frip} eq 'ARRAY' ?
+                           join (";", @{$chip_qc_count_per_exp{$exp_name}{frip}}) : '-';
+        
+          $worksheet->write( $row, $col, $frip, $format );         ## printing frip column
+          $col++;
+
+          my $rsc       = exists $chip_qc_count_per_exp{$exp_name}{rsc} && 
+                          ref $chip_qc_count_per_exp{$exp_name}{rsc} eq 'ARRAY' ?
+                          join (";", @{$chip_qc_count_per_exp{$exp_name}{rsc}}) : '-';
+
+          $worksheet->write( $row, $col, $rsc, $format );          ## printing rsc column
+        }
       }
       $col++;
     }
     
-    foreach my $chip_exp_name ( @$readcount_list ){
-      my $read_count_line = '-';
-      $read_count_line = join (";", @{$chip_read_count_per_exp{$chip_exp_name}})
-                         if exists $chip_read_count_per_exp{$chip_exp_name} && 
-                                   ref $chip_read_count_per_exp{$chip_exp_name} eq 'ARRAY';
-      $worksheet->write( $row, $col, $read_count_line );
-      $col++; 
-    }
-
     
     my $current_status = 'Incomplete';
     $current_status = 'Complete'
@@ -275,7 +312,7 @@ sub get_label{
 sub get_chip_qc{
   my ( $dbh ) = @_;
   my %chip_qc;
-  my %chip_read_count;
+  my %chip_qc_count;
   my $sth = $dbh->prepare( "select  * from chip_qc_view" ) or die "Couldn't prepare statement: " . $dbh->errstr;
   $sth->execute( ) or die "couldn't run execute: " . $sth->errstr;
   die "No rows matched" if $sth->rows == 0;
@@ -287,8 +324,16 @@ sub get_chip_qc{
     my $read_count = undef;
     $read_count =  $$row{unique_reads_post_filter} 
                    if exists $$row{unique_reads_post_filter};
-    $chip_read_count{$exp_id} = $read_count 
-                                if $read_count;
+    $chip_qc_count{$exp_id}{read_count} = $read_count 
+                                          if $read_count;
+    my $frip    = $$row{peak_enrichment}
+                  if exists $$row{peak_enrichment};
+    $chip_qc_count{$exp_id}{frip} = $frip
+                                    if $frip;
+    my $rsc     = $$row{rsc}
+                  if exists $$row{rsc};
+    $chip_qc_count{$exp_id}{rsc} = $rsc
+                                   if $rsc;
 
     if ( $$row{'BP_QC_v2_reads'} eq "FAIL" && $$row{'BP_QC_v2_frip'} eq 'FAIL' ) {
       $chip_qc{$exp_id} = 'READ_COUNT_AND_FRIP_FAIL';
@@ -306,7 +351,7 @@ sub get_chip_qc{
       $chip_qc{$exp_id} = 'PASS';
     }
   }
-  return \%chip_qc, \%chip_read_count;
+  return \%chip_qc, \%chip_qc_count;
 }
 
 sub modify_desc{
