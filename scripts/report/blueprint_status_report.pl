@@ -135,24 +135,24 @@ sub write_excel{
   foreach my $key( keys %$mapped_data ){
     my @line;
     exists $$mapped_data{$key}{'EPIRR_ID'} ? push @line,join(";", keys %{$$mapped_data{$key}{'EPIRR_ID'}})
-                                           : push @line, "-";
+                                           : push @line, "";
     exists $$mapped_data{$key}{'EPIRR_STATUS'} ? push @line, join(";", keys %{$$mapped_data{$key}{'EPIRR_STATUS'}})
-                                               : push @line, "-";
+                                               : push @line, "";
     exists $$mapped_data{$key}{'SAMPLE_GROUP'} ? push @line,$$mapped_data{$key}{'SAMPLE_GROUP'}
-                                               : push @line, "-";
+                                               : push @line, "";
     push @line, join(";", keys %{$$mapped_data{$key}{'CBR_DONOR_ID'}});
     push @line, join(";", keys %{$$mapped_data{$key}{'DONOR_ID'}});
     push @line, join(";",keys %{$$mapped_data{$key}{'SAMPLE_NAME'}});
     exists $$mapped_data{$key}{'CELL_TYPE'} ? push @line, join(";", keys %{$$mapped_data{$key}{'CELL_TYPE'}})
-                                            : push @line, "-";
+                                            : push @line, "";
     exists $$mapped_data{$key}{'TISSUE_TYPE'} ? push @line, join(";", keys %{$$mapped_data{$key}{'TISSUE_TYPE'}})
-                                              : push @line, "-";
+                                              : push @line, "";
     exists $$mapped_data{$key}{'CELL_LINE'} ? push @line,join(";", keys %{$$mapped_data{$key}{'CELL_LINE'}})
-                                            : push @line, "-";
+                                            : push @line, "";
     exists $$mapped_data{$key}{'DISEASE'} ? push @line, join(";", keys %{$$mapped_data{$key}{'DISEASE'}})
-                                          : push @line, "-";
+                                          : push @line, "";
     exists $$mapped_data{$key}{'TREATMENT'} ? push @line, join(";", keys %{$$mapped_data{$key}{'TREATMENT'}})
-                                            : push @line, "-";
+                                            : push @line, "";
     my $full_epigenome_count = 0;
     my $full_chip_count      = 0;
     $col = 0;                                    # set column count
@@ -163,10 +163,10 @@ sub write_excel{
     my @exp_lines;
     foreach my $exp_name ( @$exp_list ){
       my $exp_line;
-      my $format = undef;
+      my $format       = undef;
       my $label        = undef;
       my $pass_count   = undef;
-      my  $total_count = undef;
+      my $total_count  = undef;
     
       if ( exists ( $$mapped_data{$key}{'EXP'}{$exp_name}) ){
         $exp_line = join(";",@{$$mapped_data{$key}{'EXP'}{$exp_name}});
@@ -202,7 +202,7 @@ sub write_excel{
         }
       }
       else { 
-        $exp_line = '-';
+        $exp_line = '';
       }
 
       $worksheet->write( $row, $col, $exp_line, $format );
@@ -219,21 +219,21 @@ sub write_excel{
         
           my $read_count = exists $chip_qc_count_per_exp{$exp_name}{read_count} &&
                            ref $chip_qc_count_per_exp{$exp_name}{read_count} eq 'ARRAY' ?
-                           join (";", @{$chip_qc_count_per_exp{$exp_name}{read_count}}) : '-';
+                           join (";", @{$chip_qc_count_per_exp{$exp_name}{read_count}}) : '';
                       
           $worksheet->write( $row, $col, $read_count, $format );   ## printing read count column
           $col++;
          
           my $frip       = exists $chip_qc_count_per_exp{$exp_name}{frip} && 
                            ref $chip_qc_count_per_exp{$exp_name}{frip} eq 'ARRAY' ?
-                           join (";", @{$chip_qc_count_per_exp{$exp_name}{frip}}) : '-';
+                           join (";", @{$chip_qc_count_per_exp{$exp_name}{frip}}) : '';
         
           $worksheet->write( $row, $col, $frip, $format );         ## printing frip column
           $col++;
 
           my $rsc       = exists $chip_qc_count_per_exp{$exp_name}{rsc} && 
                           ref $chip_qc_count_per_exp{$exp_name}{rsc} eq 'ARRAY' ?
-                          join (";", @{$chip_qc_count_per_exp{$exp_name}{rsc}}) : '-';
+                          join (";", @{$chip_qc_count_per_exp{$exp_name}{rsc}}) : '';
 
           $worksheet->write( $row, $col, $rsc, $format );          ## printing rsc column
         }
@@ -242,12 +242,12 @@ sub write_excel{
     }
     
     
-    my $current_status = 'Incomplete';
-    $current_status = 'Complete'
+    my $current_status = '0';
+    $current_status = '1'
       if $full_epigenome_count == 9;
-    $current_status = '-' 
+    $current_status = '' 
       if exists $$mapped_data{$key}{'SAMPLE_GROUP'};
-    $current_status = '-' 
+    $current_status = '' 
        if exists $$mapped_data{$key}{'TREATMENT'};
     $worksheet->write( $row, $col, $current_status ); 
     $col++;
@@ -290,11 +290,16 @@ sub get_label{
   my $label = undef;
   my $pass_count = 0;
   my $fail_count = 0;
+  my $qc_missing = 0;
   my $total_count = scalar @$exps;
 
   foreach my $exp (@$exps){
-    next if $exp eq '-';
-    next unless exists $$chip_qc{$exp};
+    next if !$exp || $exp eq '-';
+    unless ( exists ( $$chip_qc{$exp})){
+      $qc_missing++;
+      next;
+    }
+
     my $chip_qc_label = $$chip_qc{$exp};
     if ( $chip_qc_label eq 'PASS'){
       $pass_count++;
@@ -305,7 +310,9 @@ sub get_label{
     }
   }
   $label .= ' : NOT_ALL_FAILED'
-   if $pass_count > 0 && $fail_count > 0;
+   if ( $pass_count > 0 && $fail_count > 0 ) || 
+      ( $fail_count > 0 && $qc_missing > 0 );
+
   return $label, $pass_count, $total_count;
 }
 
@@ -405,7 +412,7 @@ sub map_data{
     my $sample_name = $$data{$exp}{'SAMPLE_NAME'};
     $mapped_data{$key}{'SAMPLE_NAME'}{$sample_name}++;
 
-    $mapped_data{$key}{'SAMPLE_GROUP'}='NON_REF'
+    $mapped_data{$key}{'SAMPLE_GROUP'}='WP10'
        if exists $$non_ref_list{$sample_name};
     my $donor_id    = $$data{$exp}{'SAMPLE_DESC_2'};
     $mapped_data{$key}{'DONOR_ID'}{$donor_id}++;
