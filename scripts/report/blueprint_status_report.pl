@@ -26,6 +26,7 @@ my $dbuser;
 my $dbpass;
 my $xls_output_file;
 my $print_number = undef;
+my $skip_non_ref = undef;
 
 GetOptions( 'metadata_tab=s'    => \$metadata_tab,
             'era_user=s'        => \$era_user,
@@ -40,6 +41,7 @@ GetOptions( 'metadata_tab=s'    => \$metadata_tab,
             'dbpass=s'          => \$dbpass,
             'output=s'          => \$xls_output_file,
             'print_number'      => \$print_number,
+            'skip_non_ref'      => \$skip_non_ref,
           );
 
 my @era_conn = ( $era_user, $era_pass );
@@ -63,7 +65,7 @@ my ( $chip_qc, $chip_qc_count )  = get_chip_qc( $dbh );
 my ( $data, $index_header )      = read_metadata( $metadata_tab, $key_string );
 my $epirr_data                   = read_epirr( $epirr_index );
 my $non_ref_list                 = read_list( $non_ref_samples );
-my $mapped_data                  = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh );
+my $mapped_data                  = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh, $skip_non_ref );
 
 my %options = ( mapped_data    => $mapped_data, 
                 exp_list       => \@exp_list,
@@ -73,6 +75,7 @@ my %options = ( mapped_data    => $mapped_data,
                 readcount_list => \@readcount_list,
                 chip_qc_count  => $chip_qc_count,
                 print_number   => $print_number,
+                skip_non_ref   => $skip_non_ref,
               );
 
 write_excel( \%options );
@@ -88,6 +91,7 @@ sub write_excel{
   my $readcount_list  = $$options{readcount_list};
   my $chip_qc_count   = $$options{chip_qc_count};
   my $print_number    = $$options{print_number};
+  my $skip_non_ref    = $$options{skip_non_ref};
 
   my $workbook = Spreadsheet::WriteExcel->new( $xls_output_file );
   my $worksheet = $workbook->add_worksheet( 'sample status report' ); 
@@ -113,13 +117,15 @@ sub write_excel{
 
   my %full_chip_hash = map{ $_ => 1 } @$chip_list;
 
-  my @header = qw/ EPIRR_ID EPIRR_STATUS SAMPLE_GROUP CBR_DONOR_ID DONOR_ID SAMPLE_NAME CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
+  my @header = qw/ EPIRR_ID EPIRR_STATUS /;
+  push @header, 'SAMPLE_GROUP' unless $skip_non_ref;
+  push @header,qw/ CBR_DONOR_ID DONOR_ID SAMPLE_NAME CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
 
   if ( $print_number ){
     my @extended_header;
     foreach my $exp ( @$exp_list ){
       push @extended_header, $exp, $exp.'_EXP';
-      push @extended_header, $exp.'_QC_PASS_EXP', $exp.'_read_count', $exp.'_frip_count', $exp.'_ppqt_rsc'
+      push @extended_header, $exp.'_QC_PASS_EXP', $exp.'_total_reads', $exp.'_mapped_%_pre_filter', $exp.'_duplicate_%_pre_filter', $exp.'_mapped_%_post_filter', $exp.'_duplicate_%_post_filter' ,$exp.'_read_count', $exp.'_frip_count', $exp.'_ppqt_rsc'
            if exists $full_chip_hash{$exp};
     }
     push @header, @extended_header;
@@ -138,8 +144,11 @@ sub write_excel{
                                            : push @line, "";
     exists $$mapped_data{$key}{'EPIRR_STATUS'} ? push @line, join(";", keys %{$$mapped_data{$key}{'EPIRR_STATUS'}})
                                                : push @line, "";
-    exists $$mapped_data{$key}{'SAMPLE_GROUP'} ? push @line,$$mapped_data{$key}{'SAMPLE_GROUP'}
+    unless ( $skip_non_ref ){
+      exists $$mapped_data{$key}{'SAMPLE_GROUP'} ? push @line,$$mapped_data{$key}{'SAMPLE_GROUP'}
                                                : push @line, "";
+    }
+
     push @line, join(";", keys %{$$mapped_data{$key}{'CBR_DONOR_ID'}});
     push @line, join(";", keys %{$$mapped_data{$key}{'DONOR_ID'}});
     push @line, join(";",keys %{$$mapped_data{$key}{'SAMPLE_NAME'}});
@@ -183,6 +192,21 @@ sub write_excel{
 
           push @{$chip_qc_count_per_exp{$exp_name}{rsc}}, $$chip_qc_count{$exp_id}{rsc}
                if exists $$chip_qc_count{$exp_id}{rsc};  
+ 
+          push @{$chip_qc_count_per_exp{$exp_name}{mapping_rate_post_filter}}, $$chip_qc_count{$exp_id}{mapping_rate_post_filter}
+               if exists $$chip_qc_count{$exp_id}{mapping_rate_post_filter};
+
+          push @{$chip_qc_count_per_exp{$exp_name}{dup_rate_post_filter}}, $$chip_qc_count{$exp_id}{dup_rate_post_filter}
+               if exists $$chip_qc_count{$exp_id}{dup_rate_post_filter};
+          
+          push @{$chip_qc_count_per_exp{$exp_name}{mapping_rate_pre_filter}}, $$chip_qc_count{$exp_id}{mapping_rate_pre_filter}
+               if exists $$chip_qc_count{$exp_id}{mapping_rate_pre_filter};
+
+          push @{$chip_qc_count_per_exp{$exp_name}{dup_rate_pre_filter}}, $$chip_qc_count{$exp_id}{dup_rate_pre_filter}
+               if exists $$chip_qc_count{$exp_id}{dup_rate_pre_filter};
+
+          push @{$chip_qc_count_per_exp{$exp_name}{fastq_read_count}}, $$chip_qc_count{$exp_id}{fastq_read_count}
+               if exists $$chip_qc_count{$exp_id}{fastq_read_count};
         }
 
         if ( $label ){
@@ -217,11 +241,49 @@ sub write_excel{
           $worksheet->write( $row, $col, $pass_count, $format );   ## printing QC pass column
           $col++;
         
+          my $total_reads     = exists $chip_qc_count_per_exp{$exp_name}{fastq_read_count} &&
+                                ref $chip_qc_count_per_exp{$exp_name}{fastq_read_count} eq 'ARRAY' ?
+                                join (";", @{$chip_qc_count_per_exp{$exp_name}{fastq_read_count}}) : '';
+          $worksheet->write( $row, $col, $total_reads, $format );              ## printing total reads column
+          $col++; 
+        
+          my $mapped_pct_pre  = exists $chip_qc_count_per_exp{$exp_name}{mapping_rate_pre_filter} &&
+                                ref $chip_qc_count_per_exp{$exp_name}{mapping_rate_pre_filter} eq 'ARRAY' ?
+                                join (";", @{$chip_qc_count_per_exp{$exp_name}{mapping_rate_pre_filter}}) : '';
+          
+
+          $worksheet->write( $row, $col, $mapped_pct_pre, $format );              ## printing pre filter mapping percentage column
+          $col++;
+
+          
+          my $dup_pct_pre     = exists $chip_qc_count_per_exp{$exp_name}{dup_rate_pre_filter} &&
+                                ref $chip_qc_count_per_exp{$exp_name}{dup_rate_pre_filter} eq 'ARRAY' ?
+                                join (";", @{$chip_qc_count_per_exp{$exp_name}{dup_rate_pre_filter}}) : '';
+          
+ 
+          $worksheet->write( $row, $col, $dup_pct_pre, $format );                 ## printing pre filter duplicate percentage column
+          $col++;
+
+
+          my $mapped_pct_post =  exists $chip_qc_count_per_exp{$exp_name}{mapping_rate_post_filter} &&
+                                 ref $chip_qc_count_per_exp{$exp_name}{mapping_rate_post_filter} eq 'ARRAY' ?
+                                 join (";", @{$chip_qc_count_per_exp{$exp_name}{mapping_rate_post_filter}}) : '';
+
+          $worksheet->write( $row, $col, $mapped_pct_post, $format );             ## printing post filter mapping percentage column
+          $col++;
+
+          my $dup_pct_post    = exists $chip_qc_count_per_exp{$exp_name}{dup_rate_post_filter} &&
+                                ref $chip_qc_count_per_exp{$exp_name}{dup_rate_post_filter} eq 'ARRAY' ?
+                                join (";", @{$chip_qc_count_per_exp{$exp_name}{dup_rate_post_filter}}) : '';
+
+          $worksheet->write( $row, $col, $dup_pct_post, $format );                 ## printing duplicate percentage column
+          $col++;
+
           my $read_count = exists $chip_qc_count_per_exp{$exp_name}{read_count} &&
                            ref $chip_qc_count_per_exp{$exp_name}{read_count} eq 'ARRAY' ?
                            join (";", @{$chip_qc_count_per_exp{$exp_name}{read_count}}) : '';
                       
-          $worksheet->write( $row, $col, $read_count, $format );   ## printing read count column
+          $worksheet->write( $row, $col, $read_count, $format );                    ## printing unique mapped read count column
           $col++;
          
           my $frip       = exists $chip_qc_count_per_exp{$exp_name}{frip} && 
@@ -342,6 +404,40 @@ sub get_chip_qc{
     $chip_qc_count{$exp_id}{rsc} = $rsc
                                    if $rsc;
 
+    my $dup_rate = $$row{dup_rate_post_filter}
+                   if exists $$row{dup_rate_post_filter};
+    $chip_qc_count{$exp_id}{dup_rate_post_filter} = $dup_rate
+                                                    if $dup_rate;
+
+    my $pre_dup_rate = $$row{dup_rate_pre_filter}
+                       if exists $$row{dup_rate_pre_filter}; 
+    $chip_qc_count{$exp_id}{dup_rate_pre_filter} = $pre_dup_rate
+                                                   if $pre_dup_rate;
+
+    my $pre_mapping  = $$row{mapping_rate_pre_filter}
+                       if exists $$row{mapping_rate_pre_filter};
+    $chip_qc_count{$exp_id}{mapping_rate_pre_filter} = $pre_mapping
+                                                       if $pre_mapping; 
+     
+    my $mapping_rate_post_filter = undef;
+ 
+    if ( defined ( $$row{reads_aligned_post_filter} ) && defined ( $$row{fastq_read_count} )){
+      $mapping_rate_post_filter = $$row{reads_aligned_post_filter} / $$row{fastq_read_count}
+                                   if $$row{reads_aligned_post_filter} ne '' 
+                                   && $$row{reads_aligned_post_filter} > 0 
+                                   && $$row{fastq_read_count} ne ''
+                                   && $$row{fastq_read_count} > 0;
+
+      $chip_qc_count{$exp_id}{mapping_rate_post_filter} = $mapping_rate_post_filter
+                                      if $mapping_rate_post_filter;
+    }
+
+    my $fastq_read_count = $$row{fastq_read_count}
+                           if $$row{fastq_read_count};
+    $chip_qc_count{$exp_id}{fastq_read_count} = $fastq_read_count
+                                                if $fastq_read_count;
+
+
     if ( $$row{'BP_QC_v2_reads'} eq "FAIL" && $$row{'BP_QC_v2_frip'} eq 'FAIL' ) {
       $chip_qc{$exp_id} = 'READ_COUNT_AND_FRIP_FAIL';
     }
@@ -372,7 +468,7 @@ sub modify_desc{
 }
 
 sub map_data{
-  my ( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh ) = @_;
+  my ( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh, $skip_non_ref ) = @_;
   my %mapped_data;
   
   foreach my $exp ( keys %{$data} ){
@@ -382,6 +478,7 @@ sub map_data{
     my $check_sample_status = $$data{$exp}{'SAMPLE_STATUS'};
     next unless $check_sample_status eq 'private' or
             $check_sample_status eq 'public';               # remove suppressed samples in EGA 
+
 
     if ( exists ($$epirr_data{$exp} )){
       my $epirr_id = $$epirr_data{$exp};
@@ -399,6 +496,8 @@ sub map_data{
     my $samp_desc_3 = modify_desc($$data{$exp}{'SAMPLE_DESC_3'});
     my $key = $samp_desc_1.'_'.$samp_desc_2.'_'.$samp_desc_3;
 
+    next if $skip_non_ref && exists $$non_ref_list{$$data{$exp}{'SAMPLE_NAME'}};  # do not consider nonref data
+
     my $exp_type     = $$data{$exp}{'EXPERIMENT_TYPE'};
     my $lib_strategy = $$data{$exp}{'LIBRARY_STRATEGY'};
     next unless $lib_strategy eq 'Bisulfite-Seq' or 
@@ -414,6 +513,7 @@ sub map_data{
 
     $mapped_data{$key}{'SAMPLE_GROUP'}='WP10'
        if exists $$non_ref_list{$sample_name};
+
     my $donor_id    = $$data{$exp}{'SAMPLE_DESC_2'};
     $mapped_data{$key}{'DONOR_ID'}{$donor_id}++;
 
