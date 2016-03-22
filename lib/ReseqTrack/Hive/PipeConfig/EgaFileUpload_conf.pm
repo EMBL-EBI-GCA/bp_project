@@ -6,7 +6,7 @@
 
 =head1 SYNOPSIS
 
-    init_pipeline.pl ReseqTrack::Hive::PipeConfig::EgaFileUpload_conf -inputfile file_list -work_dir dir_name -java_path java_path -ega_jar /path/webin-data-streamer-Upload-Client.jar 
+    init_pipeline.pl ReseqTrack::Hive::PipeConfig::EgaFileUpload_conf -inputfile file_list -work_dir dir_name -java_path java_path -ega_jar /path/webin-data-streamer-Upload-Client.jar -upload_dest 'login@host:/path/'
 
 
 =cut
