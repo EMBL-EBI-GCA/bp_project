@@ -409,9 +409,9 @@ sub _get_new_path {
   $destination =~ s!//!/!g;
   $destination =~ s/ /_/g;
   $destination =~ s/[ '",;()=\[\]]/_/g;
+  $destination =~ s/_+/_/g;
   $destination =~ s/_\//\//g;                                ## not  allowing "abc_/def"
   $destination =~ s/\/_/\//g;                                ## not  allowing "abc/_def"
-  $destination =~ s/_+/_/g;
  
   return $destination;
 }

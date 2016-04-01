@@ -99,6 +99,48 @@ sub test_cnag_files {
   ok( $hyper_path eq '/path/results/homo_sapiens/GRCh38/Cord_blood/C005PS/CD14-positive_CD16-negative_classical_monocyte/Bisulfite-Seq/CNAG/C005PS51.hyper_meth.bs_call.GRCh38.20160615.bed.gz', 'bs_hyper_path_1');
   ok( $hyper_collection eq 'ERX242612', 'bs_hyper_collection_1');
 
+  ### BAM 2
+  $$file_options_cnag{filename}    = 'V158.bam';
+  $$file_options_cnag{filetype}    = 'BS_BAM_CNAG';
+  $$file_options_cnag{freeze_date} = '20150707';
+  
+  my ($bam_path_2, $bam_collection_2) = cnag_path($file_options_cnag);
+
+  ok( $bam_path_2 eq '/path/aln/homo_sapiens/GRCh38/Venous_blood/NC11_41/class_switched_memory_B_cell/Bisulfite-Seq/CNAG/csMBC_NC11_41.BS.gem_cnag_bs.GRCh38.20150707.bam', 'bs_bam_path_2');
+  ok( $bam_collection_2 eq 'ERX715132', 'bs_bam_collection_2' );
+
+  ### BAM 3
+  $$file_options_cnag{filename}    = 'S00TU2A1.bam';
+  $$file_options_cnag{filetype}    = 'BS_BAM_CNAG';
+  $$file_options_cnag{freeze_date} = '20160120';
+
+  my ($bam_path_3, $bam_collection_3) = cnag_path($file_options_cnag);
+  
+  ok( $bam_path_3 eq '/path/aln/homo_sapiens/GRCh38/Venous_blood/B270/immature_conventional_dendritic_cell_-_GM-CSF_IL4_T_6_days/Bisulfite-Seq/CNAG/S00TU2A1.BS.gem_cnag_bs.GRCh38.20160120.bam', 'bs_bam_path_3');
+  ok( $bam_collection_3 eq 'ERX1299215', 'bs_bam_collection_3' );
+
+  ### BAM 4
+
+  $$file_options_cnag{filename}    = 'S004XMA1.bam';
+  $$file_options_cnag{filetype}    = 'BS_BAM_CNAG';
+  $$file_options_cnag{freeze_date} = '20150707';
+
+  my ($bam_path_4, $bam_collection_4) = cnag_path($file_options_cnag);
+
+  ok( $bam_path_4 eq '/path/aln/homo_sapiens/GRCh38/Bone_marrow/pz_284/Acute_promyelocytic_leukemia_-_CTR/Bisulfite-Seq/CNAG/S004XMA1.BS.gem_cnag_bs.GRCh38.20150707.bam', 'bs_bam_path_4');
+  ok( $bam_collection_4 eq 'ERX358119', 'bs_bam_collection_4' );
+
+  ### BAM 5
+
+  $$file_options_cnag{filename}    = 'S00K88A1.bam';
+  $$file_options_cnag{filetype}    = 'BS_BAM_CNAG';
+  $$file_options_cnag{freeze_date} = '20150707';
+
+  my ($bam_path_5, $bam_collection_5) = cnag_path($file_options_cnag);
+
+  ok( $bam_path_5 eq '/path/aln/homo_sapiens/GRCh38/Venous_blood/PB270313/mature_neutrophil_-_G-CSF_Dex._Treatment_16-20_hrs/Bisulfite-Seq/CNAG/S00K88A1.BS.gem_cnag_bs.GRCh38.20150707.bam', 'bs_bam_path_5');
+  ok( $bam_collection_5 eq 'ERX931059', 'bs_bam_collection_5' );
+
 }
 
 sub test_crg_files {
@@ -106,8 +148,9 @@ sub test_crg_files {
 
   ### BAM files
 
-  $$file_options_crg{filename} = 'S004AV11.RNA_seq.star_grape2_crg.20151022.bam';
-  $$file_options_crg{filetype} = 'RNA_BAM_STAR_CRG';
+  $$file_options_crg{filename}     = 'S004AV11.RNA_seq.star_grape2_crg.20151022.bam';
+  $$file_options_crg{filetype}     = 'RNA_BAM_STAR_CRG';
+  $$file_options_crg{freeze_date} = '20160615';
 
   my ($bam_path, $bam_collection) = crg_path($file_options_crg);
   ok( $bam_path eq '/path/aln/homo_sapiens/GRCh38/Cord_blood/S004AV/CD34-negative_CD41-positive_CD42-positive_megakaryocyte_cell/RNA-Seq/MPIMG/S004AV11.RNA-Seq.star_grape2_crg.GRCh38.20160615.bam', 'rna_bam_path_1');
