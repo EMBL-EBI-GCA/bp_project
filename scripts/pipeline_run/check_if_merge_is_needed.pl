@@ -61,11 +61,14 @@ foreach my $ex (keys %hash) {
     }
 }
 
+my $update_required=0;
 foreach my $ex (keys %hash) {
     my @merged=keys %{$hash{$ex}{'merged'}};
     my @new=keys %{$hash{$ex}{'new'}};
     if ( array_diff(@merged, @new) ) {
 	print "[HEY!] For experiment $ex: runs_merged:@merged total_runs:@new\n";
+	$update_required=1;
     }
 }
 
+print "[INFO] Everything is up-to-date\n" if !$update_required;
