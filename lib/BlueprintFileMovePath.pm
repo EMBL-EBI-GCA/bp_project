@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Exporter qw( import );
 
-our @EXPORT_OK = qw( cnag_path crg_PATH wtsi_path get_meta_data_from_index );
+our @EXPORT_OK = qw( cnag_path crg_path wtsi_path get_meta_data_from_index get_alt_sample_name_from_file);
 
 sub cnag_path {
   my( $options ) = @_;
@@ -314,7 +314,22 @@ sub get_meta_data_from_index {
   return \%meta_data;
 }
 
+sub get_alt_sample_name_from_file {
+  my ( $file ) = @_;
+  my %file_info;
 
+  open my $fh, '<', $file;
+  while ( <$fh> ){
+    chomp;
+    next if /^#/;
+    my @vals = split "\t";
+    die "expecting 2 columns , got ".scalar @vals." in $file",$/ 
+        unless scalar @vals == 2;
+    $file_info{ $vals[0] } = $vals[1];
+  }
+  close( $fh );
+  return \%file_info;
+}
 
 
 sub _get_new_path {
@@ -356,13 +371,6 @@ sub _get_new_path {
  $new_file_name =~ s!/!_!g;
  $new_file_name =~ s/ /_/g;
                                                        
- 
- if ( $filename eq $new_file_name ) {
-  warn "RETAINED file name: $filename : $new_file_name",$/;
- }
- else {
-  warn "CHANGED file name: $filename : $new_file_name",$/;
- }
 
  $$meta_data_entry{sample_desc_1} = "NO_TISSUE" 
                    if $meta_data_entry->{sample_desc_1} eq "-";
