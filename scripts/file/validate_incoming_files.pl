@@ -545,7 +545,7 @@ sub build_dest_path {
   
        throw("no destination found for $f_file_name type $f_file_type") unless $destination;
 
-
+print $collection_name,"\t",$f_file_type,$/;
        my $existing_collection = $ca->fetch_by_name_and_type($collection_name,$f_file_type);
        if( $existing_collection ){
          my $existing_file_ids  = $existing_collection->other_ids;
