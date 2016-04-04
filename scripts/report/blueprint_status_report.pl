@@ -58,8 +58,6 @@ my @chip_list = ( 'Input',   'H3K4me3',  'H3K4me1', 'H3K9me3',
                   'H3K27ac', 'H3K27me3', 'H3K36me3' );
 my @exp_list  = ( 'Bisulfite-Seq', 'RNA-Seq' );
 push @exp_list, @chip_list;
-my @readcount_list = ( 'Input_mapped_read',   'H3K4me3_mapped_read',  'H3K4me1_mapped_read', 'H3K9me3_mapped_read',
-                       'H3K27ac_mapped_read', 'H3K27me3_mapped_read', 'H3K36me3_mapped_read' );
 
 my ( $chip_qc, $chip_qc_count )  = get_chip_qc( $dbh );
 my ( $data, $index_header )      = read_metadata( $metadata_tab, $key_string );
@@ -72,7 +70,6 @@ my %options = ( mapped_data    => $mapped_data,
                 chip_list      => \@chip_list,
                 chip_qc        => $chip_qc,
                 xls_output     => $xls_output_file,
-                readcount_list => \@readcount_list,
                 chip_qc_count  => $chip_qc_count,
                 print_number   => $print_number,
                 skip_non_ref   => $skip_non_ref,
@@ -88,7 +85,6 @@ sub write_excel{
   my $chip_list       = $$options{chip_list};
   my $chip_qc         = $$options{chip_qc};
   my $xls_output_file = $$options{xls_output};
-  my $readcount_list  = $$options{readcount_list};
   my $chip_qc_count   = $$options{chip_qc_count};
   my $print_number    = $$options{print_number};
   my $skip_non_ref    = $$options{skip_non_ref};
@@ -124,8 +120,8 @@ sub write_excel{
   if ( $print_number ){
     my @extended_header;
     foreach my $exp ( @$exp_list ){
-      push @extended_header, $exp, $exp.'_EXP';
-      push @extended_header, $exp.'_QC_PASS_EXP', $exp.'_total_reads', $exp.'_mapped_%_pre_filter', $exp.'_duplicate_%_pre_filter', $exp.'_mapped_%_post_filter', $exp.'_duplicate_%_post_filter' ,$exp.'_read_count', $exp.'_frip_count', $exp.'_ppqt_rsc'
+      push @extended_header, $exp.'_Experiment_IDS', $exp.'_Data_Available';
+      push @extended_header, $exp.'_QC_status', $exp.'_Mapped_reads(%)', $exp.'_Duplicate_reads(%)' ,$exp.'_Unique_Aligned_Reads', $exp.'_FRIP', $exp.'_PPQT_RSC'
            if exists $full_chip_hash{$exp};
     }
     push @header, @extended_header;
@@ -199,14 +195,6 @@ sub write_excel{
           push @{$chip_qc_count_per_exp{$exp_name}{dup_rate_post_filter}}, $$chip_qc_count{$exp_id}{dup_rate_post_filter}
                if exists $$chip_qc_count{$exp_id}{dup_rate_post_filter};
           
-          push @{$chip_qc_count_per_exp{$exp_name}{mapping_rate_pre_filter}}, $$chip_qc_count{$exp_id}{mapping_rate_pre_filter}
-               if exists $$chip_qc_count{$exp_id}{mapping_rate_pre_filter};
-
-          push @{$chip_qc_count_per_exp{$exp_name}{dup_rate_pre_filter}}, $$chip_qc_count{$exp_id}{dup_rate_pre_filter}
-               if exists $$chip_qc_count{$exp_id}{dup_rate_pre_filter};
-
-          push @{$chip_qc_count_per_exp{$exp_name}{fastq_read_count}}, $$chip_qc_count{$exp_id}{fastq_read_count}
-               if exists $$chip_qc_count{$exp_id}{fastq_read_count};
         }
 
         if ( $label ){
@@ -234,36 +222,13 @@ sub write_excel{
       if ( $print_number ){
         my $count_line = $total_count ? 1 : 0;
         $col++;  
-        $worksheet->write( $row, $col, $count_line, $format );     ## printing exp column
+        $worksheet->write( $row, $col, $count_line, $format );                     ## printing exp column
         if ( exists ( $full_chip_hash{$exp_name} )){
           $col++;
           $pass_count = $pass_count ? 1 : 0;
-          $worksheet->write( $row, $col, $pass_count, $format );   ## printing QC pass column
+          $worksheet->write( $row, $col, $pass_count, $format );                   ## printing QC pass column
           $col++;
         
-          my $total_reads     = exists $chip_qc_count_per_exp{$exp_name}{fastq_read_count} &&
-                                ref $chip_qc_count_per_exp{$exp_name}{fastq_read_count} eq 'ARRAY' ?
-                                join (";", @{$chip_qc_count_per_exp{$exp_name}{fastq_read_count}}) : '';
-          $worksheet->write( $row, $col, $total_reads, $format );              ## printing total reads column
-          $col++; 
-        
-          my $mapped_pct_pre  = exists $chip_qc_count_per_exp{$exp_name}{mapping_rate_pre_filter} &&
-                                ref $chip_qc_count_per_exp{$exp_name}{mapping_rate_pre_filter} eq 'ARRAY' ?
-                                join (";", @{$chip_qc_count_per_exp{$exp_name}{mapping_rate_pre_filter}}) : '';
-          
-
-          $worksheet->write( $row, $col, $mapped_pct_pre, $format );              ## printing pre filter mapping percentage column
-          $col++;
-
-          
-          my $dup_pct_pre     = exists $chip_qc_count_per_exp{$exp_name}{dup_rate_pre_filter} &&
-                                ref $chip_qc_count_per_exp{$exp_name}{dup_rate_pre_filter} eq 'ARRAY' ?
-                                join (";", @{$chip_qc_count_per_exp{$exp_name}{dup_rate_pre_filter}}) : '';
-          
- 
-          $worksheet->write( $row, $col, $dup_pct_pre, $format );                 ## printing pre filter duplicate percentage column
-          $col++;
-
 
           my $mapped_pct_post =  exists $chip_qc_count_per_exp{$exp_name}{mapping_rate_post_filter} &&
                                  ref $chip_qc_count_per_exp{$exp_name}{mapping_rate_post_filter} eq 'ARRAY' ?
