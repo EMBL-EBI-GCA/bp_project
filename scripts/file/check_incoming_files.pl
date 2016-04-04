@@ -16,7 +16,7 @@ use File::Path;
 use File::Basename qw(fileparse basename);
 use Getopt::Long;
 use autodie;
-use Data::Dump qw(dump);
+use Data::Dumper;
 
 local $| = 1;
 
@@ -39,7 +39,7 @@ my $staging_dir;
 my %options;
 my $trim_dir;
 my $old_tree_dir;
-my $host_name;
+my @host_name;
 
 &GetOptions( 
         'dbhost=s'                  => \$dbhost,
@@ -58,7 +58,7 @@ my $host_name;
         'md5_manifest_tag=s'        => \$md5_manifest_tag,
         'withdraw_manifest!'        => \$withdraw_manifest,
         'withdrawn_dir=s'           => \$withdrawn_dir,
-        'host_name=s'               => \$host_name,
+        'host_name=s'               => \@host_name,
        );
 
 throw( 'Required option -dir_to_tree & -staging_dir' ) if ( !$dir_to_tree or !$staging_dir );
@@ -93,9 +93,8 @@ my $remote_hosts = $ha->fetch_all_remote;
 
 my @skip_hosts;
 
-if( $host_name ){
-  my %host_names = map{ $_ => 1 }split /\s+/, $host_name;
-
+if( @host_name > 0 ){
+  my %host_names = map{$_ => 1}@host_name;
   foreach my $rh (@$remote_hosts){
     push @skip_hosts, $rh->name
         unless exists $host_names{$rh->name};
@@ -191,7 +190,6 @@ sub process_files {
   }
 
   ## strict checking of manifest before processing the files
-
   foreach my $host_name ( keys %host_files ){
 
     my ( $manifest_file, $host_file_type_hash ) = assign_incoming_type( $host_name,     \%host_files, $type, 
@@ -486,7 +484,7 @@ Standard options other than db paramters
    perl file/check_incoming_files.pl  $DB_OPTS  -dir_to_tree  <dir_path> -work_dir <work_dir_path> -withdrawn_dir <withdrawn_dir_path> -host_name HOST_DIR_NAME
 
  or
-   perl file/check_incoming_files.pl  $DB_OPTS  -dir_to_tree  <dir_path> -work_dir <work_dir_path> -withdrawn_dir <withdrawn_dir_path> -host_name 'HOST_DIR_NAME_1 HOST_DIR_NAME_2'
+   perl file/check_incoming_files.pl  $DB_OPTS  -dir_to_tree  <dir_path> -work_dir <work_dir_path> -withdrawn_dir <withdrawn_dir_path> -host_name 'HOST_DIR_NAME_1' -host_name 'HOST_DIR_NAME_2'
 
  To load incoming files without md5 information
   
