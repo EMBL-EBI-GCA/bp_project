@@ -28,12 +28,22 @@ my $twig = XML::Twig->new(
 
 my $xml_sth = $era->dbc->prepare("select xmltype.getclobval(sample_xml) xml from sample where sample_alias = ?");
 
+open LOG,">sample.log";
+
 foreach my $sample_id ( @{ $sample_id_list } ) {
+    print LOG "[INFO] processing $sample_id\n";
     $xml_sth->execute( $sample_id );
     my $xr = $xml_sth->fetchrow_arrayref();
+    if (!$xr) {
+	print LOG "[INFO] No sample metadata in DB for $sample_id\n" if !$xr;
+	next;
+    }
     my ($xml) = @$xr;
     $twig->parse($xml);
 }
+
+close LOG;
+
 
 sub process_sample {
     my ($twig,$sample)=@_;
