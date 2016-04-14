@@ -29,7 +29,7 @@ my $twig = XML::Twig->new(
 my $xml_sth = $era->dbc->prepare("select xmltype.getclobval(sample_xml) xml from sample where sample_alias = ?");
 
 open LOG,">sample.log";
-
+print "<SAMPLE_SET>\n";
 foreach my $sample_id ( @{ $sample_id_list } ) {
     print LOG "[INFO] processing $sample_id\n";
     $xml_sth->execute( $sample_id );
@@ -41,7 +41,7 @@ foreach my $sample_id ( @{ $sample_id_list } ) {
     my ($xml) = @$xr;
     $twig->parse($xml);
 }
-
+print "\n</SAMPLE_SET>\n";
 close LOG;
 
 
