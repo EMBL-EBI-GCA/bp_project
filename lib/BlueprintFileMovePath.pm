@@ -2,6 +2,7 @@ package BlueprintFileMovePath;;
 
 use strict;
 use warnings;
+use autodie;
 use Exporter qw( import );
 
 our @EXPORT_OK = qw( cnag_path crg_path wtsi_path get_meta_data_from_index get_alt_sample_name_from_file);
