@@ -8,7 +8,7 @@ before_install:
 
     - "cpanm Module::Build::Pluggable Module::Build::Pluggable::CPANfile"
     - "git clone --branch travis_test --depth 1 https://github.com/EMBL-EBI-GCA/bp_project.git ~/bp_project"
-    - "cpanm --bp_project ~/bp_project"
+    - "cpanm --installdeps ~/bp_project"
 
 env:
   global:
