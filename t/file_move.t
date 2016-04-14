@@ -36,7 +36,7 @@ sub test_cnag_files {
 
   my ($bam_path, $bam_collection) = cnag_path($file_options_cnag);
 
-  ok( $bam_path eq '/path/aln/homo_sapiens/GRCh38/Cord_blood/C005PS/CD14-positive_CD16-negative_classical_monocyte/Bisulfite-Seq/CNAG/C005PS51.BS.gem_cnag_bs.GRCh38.20160615.bam', 'bs_bam_path_1');
+  ok( $bam_path eq '/path/aln/homo_sapiens/GRCh38/Cord_blood/C005PS/CD14-positive_CD16-negative_classical_monocyte/Bisulfite-Seq/CNAG/C005PS51.BS.gem_cnag_bs.GRCh38.20160615.bamT', 'bs_bam_path_1');
   ok( $bam_collection eq 'ERX242612', 'bs_bam_collection_1' );
 
   ### BCF files
