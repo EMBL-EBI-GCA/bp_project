@@ -1,11 +1,13 @@
+#!/usr/bin/env perl
 use strict;
 use warnings;
-
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
 use Test::More;
 use BlueprintFileMovePath qw(cnag_path crg_path wtsi_path get_meta_data_from_index get_alt_sample_name_from_file);
 
-my $metadata_file = 'test_meta_data.tab';
-my $alt_sample_file = 'test_alt_sample';
+my $metadata_file = "$Bin/test_meta_data.tab";
+my $alt_sample_file = "$Bin/test_alt_sample";
 
 my $metadata = get_meta_data_from_index($metadata_file);
 my $alt_sample_hash = get_alt_sample_name_from_file($alt_sample_file);
