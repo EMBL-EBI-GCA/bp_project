@@ -5,7 +5,7 @@ perl:
   - "5.18"
   - "5.14"
 before_install:
-
+    - "cpanm -n Devel::Cover::Report::Coveralls"
     - "cpanm Module::Build::Pluggable Module::Build::Pluggable::CPANfile"
     - "git clone --branch travis_test --depth 1 https://github.com/EMBL-EBI-GCA/bp_project.git ~/bp_project"
     - "cpanm --installdeps ~/bp_project"
