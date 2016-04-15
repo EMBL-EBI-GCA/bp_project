@@ -15,5 +15,5 @@ env:
     -PERL5LIB=$PERL5LIB:~/bp_project/lib
 
 script:
-  perl Build.PL && ./Build build  && cover -test
+  perl Build.PL && ./Build build  && cover -test -report coveralls
 
