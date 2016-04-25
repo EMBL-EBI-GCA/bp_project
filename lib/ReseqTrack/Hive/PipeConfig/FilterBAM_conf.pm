@@ -126,9 +126,27 @@ sub pipeline_analyses {
             -rc_name        => '2Gb',
             -hive_capacity  =>  200,
             -flow_into      => {
-                1 => {  'store_bam' => { 'filtered_bam' => '#bam#', 'filtered_attributes' => '#attribute_metrics#' } },
+                1 => {  'store_bam' => { 'filtered_bam'        => '#bam#', 
+                                         'filtered_attributes' => '#attribute_metrics#' } },
                 },
    });
+   push(@analyses, {
+            -logic_name => 'filter_flagstat',
+            -module        => 'ReseqTrack::Hive::Process::RunSamtools',
+            -parameters => {
+                program_file   => $self->o('samtools_exe'),
+                command        => 'flagstat',
+                add_attributes => 1,
+            },
+            -rc_name => '2Gb',
+            -hive_capacity  =>  200,
+            -flow_into      => {
+                1 => { 'store_bam' =>
+                       { 'filter_attribute_metrics' => '#attribute_metrics#',
+                         'filtered_attributes'      => '#filtered_attributes#'  
+                       }},
+            },
+      });
    push(@analyses, {
             -logic_name   => 'store_bam',
             -module       => 'ReseqTrack::Hive::Process::LoadFile',
@@ -140,6 +158,11 @@ sub pipeline_analyses {
             },
             -rc_name        => '200Mb',
             -hive_capacity  =>  200,
+           -flow_into       => {
+                1 => {'unfilt_attributes' => { 'filter_attribute_metrics' => '#attribute_metrics#',
+                                               'filtered_attributes'      => '#filtered_attributes#'
+                                             }},
+            },
    });
    push(@analyses, {
             -logic_name => 'unfilt_attributes',
@@ -149,7 +172,7 @@ sub pipeline_analyses {
                 collection_type   => $self->o('filtered_bam_type'),
                 collection_name   => $self->o('collection_name'),
             },
-            -rc_name => '200Mb',
+            -rc_name        => '200Mb',
             -hive_capacity  =>  200,
       });
    push(@analyses, {
