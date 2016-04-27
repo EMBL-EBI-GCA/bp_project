@@ -226,4 +226,62 @@ sub test_crg_files {
   my ($cosi_ratio_path, $cosi_ratio_collection) = crg_path($file_options_crg);
   ok( $cosi_ratio_path eq '/path/results/homo_sapiens/GRCh38/Cord_blood/S004AV/CD34-negative_CD41-positive_CD42-positive_megakaryocyte_cell/RNA-Seq/MPIMG/S004AV11.splicing_ratios.ipsa_grape2_crg.GRCh38.20160615.gff', 'rna_cosi_jn_path_1');
   ok( $cosi_ratio_collection eq 'ERX957890', 'rna_cosi_ratio_collection_1'); 
+
+  ### BAM 2
+  $$file_options_crg{filename} = 'ERS954092.RNA_seq.star_grape2_crg.20160418.bam';
+  $$file_options_crg{filetype} = 'RNA_BAM_STAR_CRG';
+
+  my ($bam2_path, $bam2_collection) = crg_path($file_options_crg);
+  ok( $bam2_path eq '/path/aln/homo_sapiens/GRCh38/Venous_blood/3CLL/Chronic_lymphocytic_leukemia/RNA-Seq/MPIMG/S00AXZ11.RNA-Seq.star_grape2_crg.GRCh38.20160615.bam', 'rna_bam_star_path_2' );
+  ok( $bam2_collection eq 'ERX1204491', 'rna_bam_star_collection_2');
+
+  ### Quant files 2
+  $$file_options_crg{filename} = 'ERS954092.gene_quantification.rsem_grape2_crg.20160418.results';
+  $$file_options_crg{filetype} = 'RNA_GENE_QUANT_STAR_CRG';
+
+  my ($gene_quant_path2, $gene_quant_collection2) = crg_path($file_options_crg);
+  ok( $gene_quant_path2 eq '/path/results/homo_sapiens/GRCh38/Venous_blood/3CLL/Chronic_lymphocytic_leukemia/RNA-Seq/MPIMG/S00AXZ11.gene_quantification.rsem_grape2_crg.GRCh38.20160615.results', 'rna_gene_quant_path_1');
+  ok( $gene_quant_collection2 eq 'ERX1204491', 'rna_gene_quant_collection_2');
+
+  $$file_options_crg{filename} = 'ERS954092.transcript_quantification.rsem_grape2_crg.20160418.results';
+  $$file_options_crg{filetype} = 'RNA_TRANSCRIPT_QUANT_STAR_CRG';
+
+  my ($trans_quant_path2, $trans_quant_collection2) = crg_path($file_options_crg);
+  ok( $trans_quant_path2 eq '/path/results/homo_sapiens/GRCh38/Venous_blood/3CLL/Chronic_lymphocytic_leukemia/RNA-Seq/MPIMG/S00AXZ11.transcript_quantification.rsem_grape2_crg.GRCh38.20160615.results', 'rna_trans_quant_path_2');
+  ok( $trans_quant_collection2 eq 'ERX1204491', 'rna_transcript_quant_collection_2');
+
+  ### Contig
+  $$file_options_crg{filename} = 'ERS954092.contigs.star_grape2_crg.20160418.bed';
+  $$file_options_crg{filetype} = 'RNA_CONTIGS_STAR_CRG';
+
+  my ($contig_path2, $contig_collection2) = crg_path($file_options_crg);
+  ok( $contig_path2 eq '/path/results/homo_sapiens/GRCh38/Venous_blood/3CLL/Chronic_lymphocytic_leukemia/RNA-Seq/MPIMG/S00AXZ11.contigs.star_grape2_crg.GRCh38.20160615.bed' , 'rna_contig_path_2' );
+  ok( $contig_collection2 eq 'ERX1204491', 'rna_contig_collection_2');
+
+  ### Signal
+  $$file_options_crg{filename} = 'ERS954092.minusStrandMulti.star_grape2_crg.20160418.bw';
+  $$file_options_crg{filetype} = 'RNA_SIGNAL_STAR_CRG';
+
+  my ($signal_nm_path2, $signal_nm_collection2) = crg_path($file_options_crg);
+  ok( $signal_nm_path2 eq '/path/results/homo_sapiens/GRCh38/Venous_blood/3CLL/Chronic_lymphocytic_leukemia/RNA-Seq/MPIMG/S00AXZ11.minusStrandMulti.star_grape2_crg.GRCh38.20160615.bw', 'rna_signal_path_5');
+  ok( $signal_nm_collection2 eq 'ERX1204491', 'rna_signal_collection_5');
+
+  $$file_options_crg{filename} = 'ERS954092.minusStrand.star_grape2_crg.20160418.bw';
+
+  my ($signal_n_path2, $signal_n_collection2) = crg_path($file_options_crg);
+  ok( $signal_n_path2 eq '/path/results/homo_sapiens/GRCh38/Venous_blood/3CLL/Chronic_lymphocytic_leukemia/RNA-Seq/MPIMG/S00AXZ11.minusStrand.star_grape2_crg.GRCh38.20160615.bw', 'rna_signal_path_6');
+  ok( $signal_n_collection2 eq 'ERX1204491', 'rna_signal_collection_6');
+
+  $$file_options_crg{filename} = 'ERS954092.plusStrandMulti.star_grape2_crg.20160418.bw';
+
+  my ($signal_pm_path2, $signal_pm_collection2) = crg_path($file_options_crg);
+  ok( $signal_pm_path2 eq '/path/results/homo_sapiens/GRCh38/Venous_blood/3CLL/Chronic_lymphocytic_leukemia/RNA-Seq/MPIMG/S00AXZ11.plusStrandMulti.star_grape2_crg.GRCh38.20160615.bw', 'rna_signal_path_7');
+  ok( $signal_pm_collection2 eq 'ERX1204491', 'rna_signal_collection_7');
+
+  $$file_options_crg{filename} = 'ERS954092.plusStrand.star_grape2_crg.20160418.bw';
+
+  my ($signal_p_path2, $signal_p_collection2) = crg_path($file_options_crg);
+  ok( $signal_p_path2 eq '/path/results/homo_sapiens/GRCh38/Venous_blood/3CLL/Chronic_lymphocytic_leukemia/RNA-Seq/MPIMG/S00AXZ11.plusStrand.star_grape2_crg.GRCh38.20160615.bw', 'rna_signal_path_8');
+  ok( $signal_p_collection2 eq 'ERX1204491', 'rna_signal_collection_8');
+ 
 }
