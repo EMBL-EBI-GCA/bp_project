@@ -304,6 +304,9 @@ sub fresh_sample_data {
             $molecule = 'total RNA';
         }
     }
+    elsif ( $molecule eq 'ATAC' ){
+      $molecule = 'genomic DNA';
+    }
     else {
         die( "Unexpected type $molecule for sample " . $sample->{sample_id} );
     }
