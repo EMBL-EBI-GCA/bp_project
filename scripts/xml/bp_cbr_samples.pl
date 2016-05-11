@@ -372,7 +372,7 @@ sub fresh_sample_data {
 
     }
     else {
-        push @attributes, [ 'DONOR_ID', $sample->{donor_id} ];
+        push @attributes, [ 'donor_id', $sample->{donor_id} ];
         push @attributes, [ 'subject_id', $sample->{donor_id} ];  # EGA requires this field
     }
     push @attributes, [ 'DONOR_AGE',           $age ];
