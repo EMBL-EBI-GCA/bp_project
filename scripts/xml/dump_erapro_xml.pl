@@ -60,9 +60,9 @@ print "<$table_name\_SET>".$/;
 
 foreach my $id ( @$id_list ) {    
   $xml_sth->execute( $id );
-  my $xr = $xml_sth->fetchrow_arrayref();
-  my ($xml) = @$xr;
-  $twig->parse($xml);
+  while( my ($xml) = $xml_sth->fetchrow_array()){
+    $twig->parse($xml);
+  }
 }
                     
 print "</$table_name\_SET>".$/;  
