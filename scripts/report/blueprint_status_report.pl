@@ -59,20 +59,23 @@ my @chip_list = ( 'Input',   'H3K4me3',  'H3K4me1', 'H3K9me3',
 my @exp_list  = ( 'Bisulfite-Seq', 'RNA-Seq' );
 push @exp_list, @chip_list;
 
+my @additional_assays = ( 'DNase-Hypersensitivity' );
+
 my ( $chip_qc, $chip_qc_count )  = get_chip_qc( $dbh );
 my ( $data, $index_header )      = read_metadata( $metadata_tab, $key_string );
 my $epirr_data                   = read_epirr( $epirr_index );
 my $non_ref_list                 = read_list( $non_ref_samples );
 my $mapped_data                  = map_data( $data, $index_header, $epirr_data, $non_ref_list, $epirr_dbh, $skip_non_ref );
 
-my %options = ( mapped_data    => $mapped_data, 
-                exp_list       => \@exp_list,
-                chip_list      => \@chip_list,
-                chip_qc        => $chip_qc,
-                xls_output     => $xls_output_file,
-                chip_qc_count  => $chip_qc_count,
-                print_number   => $print_number,
-                skip_non_ref   => $skip_non_ref,
+my %options = ( mapped_data      => $mapped_data, 
+                exp_list         => \@exp_list,
+                chip_list        => \@chip_list,
+                chip_qc          => $chip_qc,
+                xls_output       => $xls_output_file,
+                chip_qc_count    => $chip_qc_count,
+                print_number     => $print_number,
+                skip_non_ref     => $skip_non_ref,
+                additional_assay => \@additional_assays,
               );
 
 write_excel( \%options );
@@ -80,14 +83,15 @@ write_excel( \%options );
 sub write_excel{
   my ( $options ) = @_;
  
-  my $mapped_data     = $$options{mapped_data};
-  my $exp_list        = $$options{exp_list};
-  my $chip_list       = $$options{chip_list};
-  my $chip_qc         = $$options{chip_qc};
-  my $xls_output_file = $$options{xls_output};
-  my $chip_qc_count   = $$options{chip_qc_count};
-  my $print_number    = $$options{print_number};
-  my $skip_non_ref    = $$options{skip_non_ref};
+  my $mapped_data      = $$options{mapped_data};
+  my $exp_list         = $$options{exp_list};
+  my $chip_list        = $$options{chip_list};
+  my $chip_qc          = $$options{chip_qc};
+  my $xls_output_file  = $$options{xls_output};
+  my $chip_qc_count    = $$options{chip_qc_count};
+  my $print_number     = $$options{print_number};
+  my $skip_non_ref     = $$options{skip_non_ref};
+  my $additional_assay = $$options{additional_assay};
 
   my $workbook = Spreadsheet::WriteExcel->new( $xls_output_file );
   my $worksheet = $workbook->add_worksheet( 'sample status report' ); 
@@ -119,6 +123,11 @@ sub write_excel{
 
   if ( $print_number ){
     my @extended_header;
+
+    foreach my $nexp ( @$additional_assay ){
+      push @extended_header, $nexp.'_Experiment_IDS', $nexp.'_Data_Available';
+    }
+
     foreach my $exp ( @$exp_list ){
       push @extended_header, $exp.'_Experiment_IDS', $exp.'_Data_Available';
       push @extended_header, $exp.'_QC_status', $exp.'_Mapped_reads(%)', $exp.'_Duplicate_reads(%)' ,$exp.'_Unique_Aligned_Reads', $exp.'_FRIP', $exp.'_PPQT_RSC'
@@ -127,7 +136,7 @@ sub write_excel{
     push @header, @extended_header;
   }
   else {
-    push @header, @$exp_list;
+    push @header, @$additional_assay, @$exp_list;
   }
 
   push @header, 'CURRENT_EPIGENOME_STATUS', 'FULL_CHIP';
@@ -168,6 +177,27 @@ sub write_excel{
 
     my %chip_qc_count_per_exp;
     my @exp_lines;
+
+    foreach my $nexp_name ( @$additional_assay ){
+      my $nexp_line;
+      my $ntotal_count  = undef;
+
+      if ( exists ( $$mapped_data{$key}{'EXP'}{$nexp_name}) ){
+        $nexp_line = join(";",@{$$mapped_data{$key}{'EXP'}{$nexp_name}});
+      }
+      else {
+        $nexp_line = '';
+      }
+      $worksheet->write( $row, $col, $nexp_line );
+      if ( $print_number ){
+        $ntotal_count = (split ";", $nexp_line) if $nexp_line;
+        my $ncount_line = $ntotal_count ? 1 : 0;
+        $col++;
+        $worksheet->write( $row, $col, $ncount_line );
+      }
+      $col++;
+    }
+    
     foreach my $exp_name ( @$exp_list ){
       my $exp_line;
       my $format       = undef;
@@ -469,7 +499,8 @@ sub map_data{
     my $lib_strategy = $$data{$exp}{'LIBRARY_STRATEGY'};
     next unless $lib_strategy eq 'Bisulfite-Seq' or 
                 $lib_strategy eq 'ChIP-Seq' or
-                $lib_strategy eq 'RNA-Seq';         # filter library strategy
+                $lib_strategy eq 'RNA-Seq' or
+                $lib_strategy eq 'DNase-Hypersensitivity';         # filter library strategy
 
     push (@{$mapped_data{$key}{'EXP'}{$exp_type}},$exp)
       if $lib_strategy eq 'ChIP-Seq';
