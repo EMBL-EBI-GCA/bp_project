@@ -112,15 +112,16 @@ sub create_seed_params {
 
         EXP:
         foreach my $exp( @$all_experiments ){
+
+	  my $input_experiment_name =  $exp->source_id;
+
+	  throw('require bam_collection_type') if !$bam_collection_type;
+	  my $collection = $ca->fetch_by_name_and_type( $input_experiment_name, $bam_collection_type );
+	  next EXP if !$collection;
+
           my $experiment_attributes = $exp->attributes;
           my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
           next EXP unless $attribute->attribute_value eq $require_experiment_type;                             ## look into next experiment
-            
-          my $input_experiment_name =  $exp->source_id;
-
-          throw('require bam_collection_type') if !$bam_collection_type;
-          my $collection = $ca->fetch_by_name_and_type( $input_experiment_name, $bam_collection_type );
-          next EXP if !$collection;
 
           throw("got multiple file for collection $input_experiment_name and type $bam_collection_type") if scalar @{$collection->other_ids} >1;
 
