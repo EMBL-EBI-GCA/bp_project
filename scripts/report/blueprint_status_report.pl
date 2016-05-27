@@ -115,7 +115,7 @@ sub write_excel{
 
   my @header = qw/ EPIRR_ID EPIRR_STATUS /;
   push @header, 'SAMPLE_GROUP' unless $skip_non_ref;
-  push @header,qw/ CBR_DONOR_ID DONOR_ID SAMPLE_NAME CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
+  push @header,qw/ CBR_DONOR_ID DONOR_ID SAMPLE_NAME DONOR_SEX CELL_TYPE TISSUE_TYPE CELL_LINE DISEASE TREATMENT /;
 
   if ( $print_number ){
     my @extended_header;
@@ -148,6 +148,8 @@ sub write_excel{
     push @line, join(";", keys %{$$mapped_data{$key}{'CBR_DONOR_ID'}});
     push @line, join(";", keys %{$$mapped_data{$key}{'DONOR_ID'}});
     push @line, join(";",keys %{$$mapped_data{$key}{'SAMPLE_NAME'}});
+    exists $$mapped_data{$key}{'DONOR_SEX'} ? push @line, join(";", keys %{$$mapped_data{$key}{'DONOR_SEX'}})
+                                             : push @line, "";
     exists $$mapped_data{$key}{'CELL_TYPE'} ? push @line, join(";", keys %{$$mapped_data{$key}{'CELL_TYPE'}})
                                             : push @line, "";
     exists $$mapped_data{$key}{'TISSUE_TYPE'} ? push @line, join(";", keys %{$$mapped_data{$key}{'TISSUE_TYPE'}})
@@ -485,10 +487,13 @@ sub map_data{
     length($sample_name) == 8 
              ? $mapped_data{$key}{'CBR_DONOR_ID'}{substr($sample_name,0,6)}++
              : $mapped_data{$key}{'CBR_DONOR_ID'}{$donor_id}++;
-
+ 
     my $cell_type   = $$data{$exp}{'CELL_TYPE'};
     $mapped_data{$key}{'CELL_TYPE'}{$cell_type}++
        if $cell_type;
+    my $donor_sex = $$data{$exp}{'DONOR_SEX'};
+    $mapped_data{$key}{'DONOR_SEX'}{$donor_sex}++
+      if $donor_sex;
     my $tissue_type = $$data{$exp}{'TISSUE_TYPE'};
     $mapped_data{$key}{'TISSUE_TYPE'}{$tissue_type}++
        if $tissue_type;
