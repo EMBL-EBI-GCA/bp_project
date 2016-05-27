@@ -46,13 +46,17 @@ foreach my $old_exp( keys %{$exp_hash}){
   my $new_exp       = $$exp_hash{$old_exp};
   my $new_exp_entry = $ea->fetch_by_source_id($new_exp);
   my $new_exp_id    = $new_exp_entry->dbID;
+  die unless $new_exp_id;
 
   my $old_exp_entry = $ea->fetch_by_source_id($old_exp);
   my $old_exp_id    = $old_exp_entry->dbID;
+  die unless $old_exp_id;
+
   my $old_runs      = $ra->fetch_by_experiment_id($old_exp_id);  
   
   foreach my $old_run ( @$old_runs ){
     my $run_source_id = $old_run->source_id;
+    die unless $run_source_id;
     print "changing experiment details for Run: $run_source_id, from $old_exp:$old_exp_id to $new_exp:$new_exp_id",$/;
 
     if( $save_changes ){

@@ -1,4 +1,4 @@
-package BlueprintFileMovePath;;
+package BlueprintFileMovePath;
 
 use strict;
 use warnings;
@@ -108,20 +108,24 @@ sub crg_path {
   my $species          = $options->{species}           or die 'missing species name';      
   my $freeze_date      = $options->{freeze_date}       or die 'missing freeze date';  ## species name
   my $genome_version   = $options->{genome_version}    or die 'missing genome version';
-  my $collection_tag   = $options->{collection_tag}   or die 'missing collection name tag';
+  my $collection_tag   = $options->{collection_tag}    or die 'missing collection name tag';
+  my $alt_sample_hash  = $options->{alt_sample_hash}   or die 'no alt_sample_hash';
   $collection_tag      = lc( $collection_tag );
 
   my @file_fields   = split '\.',  $filename;
-  my $sample_id     = $file_fields[0];
+  my $sample_id     = exists $$alt_sample_hash{$file_fields[0]} ? 
+                             $$alt_sample_hash{$file_fields[0]} : 
+                             $file_fields[0];                      ## check for alt sample names
   my $mark          = $file_fields[1];
   my $pipeline_name = $file_fields[2];
   my $date          = $file_fields[3];
   my $suffix        = $file_fields[-1];
  
-  my ($run, $big_wig, $output_dir, $is_summary_file );
+  my ( $run, $big_wig, $output_dir, $is_summary_file );
   
   my $meta_data_entry = $meta_data->{$sample_id};
-  
+  die "metadata not found for sample $sample_id" unless $meta_data_entry;
+ 
   $meta_data_entry = _get_experiment_names( $meta_data_entry );
 
   die "No metadata for sample $sample_id"  if ( $sample_id && !$meta_data_entry );
