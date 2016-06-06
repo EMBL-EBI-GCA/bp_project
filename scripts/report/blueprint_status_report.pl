@@ -59,7 +59,7 @@ my @chip_list = ( 'Input',   'H3K4me3',  'H3K4me1', 'H3K9me3',
 my @exp_list  = ( 'Bisulfite-Seq', 'RNA-Seq' );
 push @exp_list, @chip_list;
 
-my @additional_assays = ( 'DNase-Hypersensitivity', 'ATAC-seq' );
+my @additional_assays = ( 'DNase-Hypersensitivity', 'ATAC-seq', 'miRNA-Seq' );
 
 my ( $chip_qc, $chip_qc_count )  = get_chip_qc( $dbh );
 my ( $data, $index_header )      = read_metadata( $metadata_tab, $key_string );
@@ -501,7 +501,8 @@ sub map_data{
                 $lib_strategy eq 'ChIP-Seq' or
                 $lib_strategy eq 'RNA-Seq' or
                 $lib_strategy eq 'ATAC-seq' or
-                $lib_strategy eq 'DNase-Hypersensitivity';         # filter library strategy
+                $lib_strategy eq 'DNase-Hypersensitivity' or      
+                $lib_strategy eq 'miRNA-Seq';                # filter library strategy
 
     push (@{$mapped_data{$key}{'EXP'}{$exp_type}},$exp)
       if $lib_strategy eq 'ChIP-Seq';
