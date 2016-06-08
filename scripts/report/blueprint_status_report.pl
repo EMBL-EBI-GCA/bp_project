@@ -59,7 +59,7 @@ my @chip_list = ( 'Input',   'H3K4me3',  'H3K4me1', 'H3K9me3',
 my @exp_list  = ( 'Bisulfite-Seq', 'RNA-Seq' );
 push @exp_list, @chip_list;
 
-my @additional_assays = ( 'DNase-Hypersensitivity', 'ATAC-seq', 'miRNA-Seq' );
+my @additional_assays = ( 'DNase-Hypersensitivity', 'ATAC-seq', 'miRNA-Seq', 'H2A.Zac', 'H3K9/14ac' );
 
 my ( $chip_qc, $chip_qc_count )  = get_chip_qc( $dbh );
 my ( $data, $index_header )      = read_metadata( $metadata_tab, $key_string );
