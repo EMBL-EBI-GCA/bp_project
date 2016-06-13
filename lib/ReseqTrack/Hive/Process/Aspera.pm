@@ -34,6 +34,8 @@ sub run {
   my $trim_path    = $self->param('trim_path');
   my $ascp_param   = $self->param('ascp_param');
 
+  $filename =~ s{\s}{\\ }g;               ## fix for space in filename
+
   if ( $ascp_exe =~ /\// ){
     die "$ascp_exe doesn't exist",$/  unless -e $ascp_exe;
     die "$ascp_exe not executable",$/ unless -x $ascp_exe;
@@ -46,6 +48,7 @@ sub run {
     if $download_dir && $upload_dir;
 
   my $file_basename = basename($filename);
+  $file_basename =~ s{\\\s}{_}g;           ## fix for space in filename
   my $log_dir = tempdir ( $file_basename.'XXXX' , DIR => $work_dir, CLEANUP => 0 );
   
   $$ascp_param{'L'} = $log_dir;            ## log dir path is required
