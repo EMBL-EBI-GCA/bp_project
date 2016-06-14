@@ -145,6 +145,9 @@ sub get_list {
 
 sub get_index_hash {
 my ( $file, $key_string ) = @_;
+  die "Key string not found to look in $file",$/
+    unless $key_string;
+
   open my $fh, '<', $file;
   my @header;
   my %data;
@@ -156,12 +159,15 @@ my ( $file, $key_string ) = @_;
     my @vals = split "\t", $_;
 
     if ( @header ) {
-      die "$key_string not found in $file\n" unless $key_index >= 0;
       $data { $vals[$key_index] }{ $header[$_] } = $vals[$_] for 0..$#header;
     }
     else {
       @header = map { uc($_) } @vals;
       my @key_index_array = grep{ $header[$_] eq $key_string } 0..$#header;
+
+      die "$key_string not found in $file",$/
+         if @key_index_array == 0;
+
       $key_index = $key_index_array[0];
     }
   }
