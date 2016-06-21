@@ -9,6 +9,7 @@ use Data::Dumper;
 use Getopt::Long;
 
 my ( $in_file, $table_name, $id_type, $era_user, $era_pass );
+my $center_name = 'BLUEPRINT';
 
 GetOptions( 'infile=s'     => \$in_file,
             'table_name=s' => \$table_name,
@@ -50,7 +51,7 @@ die "ID type $id_type not supported"
 die "table $table_name not supported"
     unless exists $cv_table{ $table_name };
 
-my $db_string = 'select xmltype.getclobval(' . $table_name . '_xml) xml from ' . $table_name . ' where ' . $table_name . '_' . $id_type . '= ?'; 
+my $db_string = 'select xmltype.getclobval(' . $table_name . '_xml) xml from ' . $table_name . ' where ' . $table_name . '_' . $id_type . '= ? and center_name = ?'  ; 
 my $xml_sth = $era->dbc->prepare( $db_string );
 
 
@@ -59,7 +60,7 @@ $table_name = uc($table_name);
 print "<$table_name\_SET>".$/;
 
 foreach my $id ( @$id_list ) {    
-  $xml_sth->execute( $id );
+  $xml_sth->execute( $id, $center_name );
   while( my ($xml) = $xml_sth->fetchrow_array()){
     $twig->parse($xml);
   }
@@ -96,11 +97,11 @@ Script for fetching XML content from ERAPRO
 
 =head1 Options
 
-  -infile      : lists of unique ids or aliases
-  -table_name  : ERAPRO table name (supported tables: sample, experiment, run, analysis)
-  -id_type     : types of the ids listed in infile (supported type: id or alias)
-  -era_user    : ERAPRO user name
-  -era_pass    : ERAPRO password
+  --infile      : lists of unique ids or aliases
+  --table_name  : ERAPRO table name (supported tables: sample, experiment, run, analysis)
+  --id_type     : types of the ids listed in infile (supported type: id or alias)
+  --era_user    : ERAPRO user name
+  --era_pass    : ERAPRO password
 
 =head1 Examples
 
