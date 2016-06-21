@@ -158,7 +158,12 @@ foreach my $sample ( keys %$metadata ){
       }
   
       my $cell_type = $$sample_metadata{$sample}{attributes}{CELL_TYPE};
-      $cell_type = lc($cell_type) unless $cell_type =~ /CD\d+/; 
+      unless ( $cell_type =~ /CD\d+/){
+        $$sample_metadata{$sample}{attributes}{CELL_TYPE} = $cell_type;
+        if ( $cell_type =~ s/\b(B|T)\b(\s|-)(\S+)/uc($1).$2.$3/ie ){
+          warn "Changing CELL_TYPE: ", $$sample_metadata{$sample}{attributes}{CELL_TYPE}," to: $cell_type",$/; 
+        }
+      }
       $$sample_metadata{$sample}{attributes}{CELL_TYPE} = $cell_type;
     }
     elsif ( $attr eq 'TISSUE_TYPE' ){
