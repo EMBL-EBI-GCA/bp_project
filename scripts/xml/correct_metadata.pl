@@ -57,6 +57,9 @@ foreach my $sample ( keys %$metadata ){
       $$sample_metadata{$sample}{attributes}{gender} = $gender;
     }
     elsif ( $attr eq 'phenotype'){
+      next ATTR 
+        if exists $$sample_metadata{$sample}{attributes}{PHENOTYPE}; ## nothing to do, rely of EGA auto conversion
+
       unless (exists ($$sample_metadata{$sample}{attributes}{SAMPLE_ONTOLOGY_URI})){
         warn "no SAMPLE_ONTOLOGY_URI: $sample, can't add phenotype",$/;
         $issue_count++;
@@ -80,6 +83,21 @@ foreach my $sample ( keys %$metadata ){
 
       my $phenotype = $sample_ontology .'; '. $disease_ontology;
       $$sample_metadata{$sample}{attributes}{phenotype} = $phenotype;
+    }
+    elsif ( $attr eq 'donor_id' ){
+      unless (exists ($$sample_metadata{$sample}{attributes}{donor_id}) ||
+              exists ($$sample_metadata{$sample}{attributes}{DONOR_ID})){
+        my $donor_id = exists $$sample_metadata{$sample}{attributes}{POOL_ID} ?
+                              $$sample_metadata{$sample}{attributes}{POOL_ID} : '';
+        if ( $donor_id && $donor_id ne ''){
+          $$sample_metadata{$sample}{attributes}{donor_id} = $donor_id;
+        }
+        else {
+          warn "no donor_id: $sample",$/;
+          $issue_count++;
+          next ATTR;
+        }
+      }
     }
     elsif ( $attr eq 'DONOR_AGE' ){
       my $age;
