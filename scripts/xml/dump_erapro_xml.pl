@@ -46,13 +46,14 @@ my $twig = XML::Twig->new(
 
 
 die "ID type $id_type not supported" 
-    unless $id_type eq 'alias' || $id_type eq 'id';
+    unless $id_type eq 'alias' || $id_type eq 'id' || $id_type eq 'ega_id';
 
 die "table $table_name not supported"
     unless exists $cv_table{ $table_name };
 
-my $db_string = 'select xmltype.getclobval(' . $table_name . '_xml) xml from ' . $table_name . ' where ' . $table_name . '_' . $id_type . '= ? and center_name = ?'  ; 
-my $xml_sth = $era->dbc->prepare( $db_string );
+my $id_field  = $id_type eq 'ega_id' ? $id_type : $table_name . '_' . $id_type;
+my $db_string = 'select xmltype.getclobval(' . $table_name . '_xml) xml from ' . $table_name . ' where ' .  $id_field . '= ? and center_name = ?'  ; 
+my $xml_sth   = $era->dbc->prepare( $db_string );
 
 
 $table_name = uc($table_name);
@@ -99,7 +100,7 @@ Script for fetching XML content from ERAPRO
 
   --infile      : lists of unique ids or aliases
   --table_name  : ERAPRO table name (supported tables: sample, experiment, run, analysis)
-  --id_type     : types of the ids listed in infile (supported type: id or alias)
+  --id_type     : types of the ids listed in infile (supported type: id, ega_id or alias)
   --era_user    : ERAPRO user name
   --era_pass    : ERAPRO password
 
@@ -107,7 +108,7 @@ Script for fetching XML content from ERAPRO
 
 Run it like this for the Blueprint project:
 
-  perl dump_erapro_xml.pl  -infile FILE -id_type TYPE -table_name TABLE_NAME -era_user USER -era_pass PASSWORD
+  perl dump_erapro_xml.pl  --infile FILE --id_type TYPE --table_name TABLE_NAME --era_user USER --era_pass PASSWORD
 
 =cut
 
