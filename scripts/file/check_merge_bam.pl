@@ -65,26 +65,30 @@ while ( my $exp_obj = shift @$all_exps ){
 
   my $merge_runs = $merge_bam->other_ids;
 
-  warn $exp_name,"\n"
+  warn "Runs not matching with collections: $exp_name",$/
      unless @$runs == @$merge_runs;
 
-  if ( @$merge_runs > 1 && $check_bam && @$runs == @$merge_runs ){
+  if ( @$merge_runs > 0 && $check_bam && @$runs == @$merge_runs ){ ## check all experiments without collection mismatch
     my $c = $ca->fetch_by_name_and_type( $exp_name, $final_bam );
-    die "missing: $exp_name, $final_bam",$/ 
-      unless $c;                               ## check for the final bam when the merge bam is present
 
-    my @run_ids = map{ $_->source_id } @$runs;
-    my $file_ids = $c->other_ids;
+    if( $c ){
+      my @run_ids = map{ $_->source_id } @$runs;
+      my $file_ids = $c->other_ids;
     
-    foreach my $file_id ( @$file_ids ){
-      my $file = $fa->fetch_by_dbID($file_id);
-      my $path = $file->name;
-      die unless $path;
+      foreach my $file_id ( @$file_ids ){
+        my $file = $fa->fetch_by_dbID($file_id);
+        my $path = $file->name;
+        die "Path not found for $exp_name, $final_bam",$/
+          unless $path;
 
-      my $rg_tag = get_rg_tags( $path, $tag_name, $samtools );
-      my $lc = List::Compare->new( \@run_ids, $rg_tag );
-      warn "RG check: $exp_name\n"
-        unless $lc->is_LequivalentR();
+        my $rg_tag = get_rg_tags( $path, $tag_name, $samtools );
+        my $lc = List::Compare->new( \@run_ids, $rg_tag );
+        warn "RG tag not matching with collections: $exp_name\n"
+          unless $lc->is_LequivalentR();
+      }
+    }
+    else {
+      warn "missing collection: $exp_name, $final_bam",$/;      ## check for the final bam when the merge bam is present
     }
   }
 }
