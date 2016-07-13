@@ -113,6 +113,10 @@ sub create_seed_params {
     
     if (@$output_experiment_attributes) {
         my $experiment_attributes = $experiment->attributes;
+
+        my ($exp_type_attribute) = grep {$_->attribute_name eq 'EXPERIMENT_TYPE'} @$experiment_attributes;
+        next SEED unless $exp_type_attribute;               ## Fix for missing EXPERIMENT_TYPE attribute
+
         ATTRIBUTE:
         foreach my $attribute_name (@$output_experiment_attributes) {
           my ($attribute) = grep {$_->attribute_name eq $attribute_name} @$experiment_attributes;
@@ -121,6 +125,9 @@ sub create_seed_params {
 
           $attribute_value=~ s/Histone\s+//g
               if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name
+           
+          $attribute_value=~ s/\//_/g
+              if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name for H3k9/14ac
  
           $attribute_value=~ s/ChIP-Seq\s+//g
               if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name

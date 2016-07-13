@@ -67,14 +67,22 @@ sub create_seed_params {
       
       my $experiment = $ea->fetch_by_source_id( $experiment_name );
       my $experiment_attributes = $experiment->attributes;
+     
+      my ($exp_type_attribute) = grep {$_->attribute_name eq 'EXPERIMENT_TYPE'} @$experiment_attributes;
+      next SEED unless $exp_type_attribute;                                          ## fix for missing EXPERIMENT_TYPE attribute 
+
       my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
       next SEED if $attribute->attribute_value eq $require_experiment_type;          ## not seeding pipeline for input experiments
       
       my $attribute_name = $attribute->attribute_name;
       my $attribute_value = $attribute->attribute_value;
 
+          
       $attribute_value=~ s/Histone\s+//g
          if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name
+
+      $attribute_value=~ s/\//_/g
+         if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name for H3K9/14ac
 
       $attribute_value=~ s/ChIP-Seq\s+//g
          if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name
