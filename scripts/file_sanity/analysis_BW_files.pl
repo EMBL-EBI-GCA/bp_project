@@ -37,6 +37,8 @@ my @valid_files=qw(
 CHIP_WIGGLER
 DNASE_WIGGLER
 RNA_SIGNAL_STAR_CRG
+BS_METH_CALL_CNAG
+BS_METH_COV_CNAG
 );
 
 #array containing chros to be checked
