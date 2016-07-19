@@ -111,11 +111,11 @@ sub create_seed_params {
         $output_hash->{$column_name} = &{$ea->column_mappings($experiment)->{$column_name}}();
     }
     
-    if (@$output_experiment_attributes) {
-        my $experiment_attributes = $experiment->attributes;
+    my $experiment_attributes = $experiment->attributes;
+    my ($exp_type_attribute) = grep {$_->attribute_name eq 'EXPERIMENT_TYPE'} @$experiment_attributes;
+    next SEED unless $exp_type_attribute;                   ## Fix for missing EXPERIMENT_TYPE attribute
 
-        my ($exp_type_attribute) = grep {$_->attribute_name eq 'EXPERIMENT_TYPE'} @$experiment_attributes;
-        next SEED unless $exp_type_attribute;               ## Fix for missing EXPERIMENT_TYPE attribute
+    if (@$output_experiment_attributes) {
 
         ATTRIBUTE:
         foreach my $attribute_name (@$output_experiment_attributes) {
