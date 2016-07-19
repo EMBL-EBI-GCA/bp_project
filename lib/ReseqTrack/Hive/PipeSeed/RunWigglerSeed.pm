@@ -74,7 +74,7 @@ sub create_seed_params {
       $output_hash->{'experiment_source_id'} = $experiment_name;
         
       my $runs = $ra->fetch_by_experiment_id($experiment->dbID);  
-      my $sample_id = $$runs[0]->sample_id;                    ## assuming all runs of an experiment are from same sample
+      my $sample_id = $$runs[0]->experiment->sample_id;             ## assuming all runs of an experiment are from same sample
       my $sample = $sa->fetch_by_dbID( $sample_id );
       $output_hash->{'sample_alias'} = $sample->sample_alias;
       push ( @new_seed_params, $seed_params )
