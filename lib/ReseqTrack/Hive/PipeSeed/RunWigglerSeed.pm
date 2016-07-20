@@ -58,18 +58,22 @@ sub create_seed_params {
       my $experiment = $ea->fetch_by_source_id( $experiment_name );
       my $experiment_attributes = $experiment->attributes;
       my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
+      next SEED unless $attribute;                                 ## Fix for missing EXPERIMENT_TYPE attribute
       
       my $attribute_name = $attribute->attribute_name;
       my $attribute_value = $attribute->attribute_value;
 
       $attribute_value=~ s/Histone\s+//g
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name
+         if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
+
+      $attribute_value=~ s/\//_/g
+         if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name for H3k9/14ac
 
       $attribute_value=~ s/ChIP-Seq\s+//g
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name
+         if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
 
       $attribute_value=~ s/Chromatin\sAccessibility/Dnase/
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint Dnase file name 
+         if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint Dnase file name 
       $output_hash->{$attribute_name} = $attribute_value;
       $output_hash->{'experiment_source_id'} = $experiment_name;
         
@@ -79,7 +83,7 @@ sub create_seed_params {
       $output_hash->{'sample_alias'} = $sample->sample_alias;
       push ( @new_seed_params, $seed_params )
    }
-  $self->seed_params(\@new_seed_params);  ## updating the seed param
+  $self->seed_params(\@new_seed_params);                            ## updating the seed param
   $db->dbc->disconnect_when_inactive(1);
 }
 
