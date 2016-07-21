@@ -6,6 +6,9 @@ use base ('ReseqTrack::Hive::PipeSeed::BasePipeSeed');
 use ReseqTrack::Tools::Exception qw(throw warning);
 use autodie;
 use Data::Dump qw(dump);
+use Exporter qw(import);
+
+our @EXPORT_OK = qw( _read_non_match_input _check_exp_type );
 
 sub default_options {
   return {
@@ -68,34 +71,11 @@ sub create_seed_params {
       my $experiment = $ea->fetch_by_source_id( $experiment_name );
       my $experiment_attributes = $experiment->attributes;
      
-      my ($exp_type_attribute) = grep {$_->attribute_name eq 'EXPERIMENT_TYPE'} @$experiment_attributes;
-      next SEED unless $exp_type_attribute;                                          ## fix for missing EXPERIMENT_TYPE attribute 
+      my $exp_type_check = _check_exp_type( $experiment_attributes, $exp_type_attribute_name, $require_experiment_type, $output_hash );
+      next SEED unless $exp_type_check;
 
-      my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
-      next SEED if $attribute->attribute_value eq $require_experiment_type;          ## not seeding pipeline for input experiments
-      
-      my $attribute_name = $attribute->attribute_name;
-      my $attribute_value = $attribute->attribute_value;
+      $output_hash->{'experiment_source_id'} = $experiment_name;                                             ## adding only for selected seeds
 
-          
-      $attribute_value=~ s/Histone\s+//g
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name
-
-      $attribute_value=~ s/\//_/g
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name for H3K9/14ac
-
-      $attribute_value=~ s/ChIP-Seq\s+//g
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name
-
-
-      $output_hash->{$attribute_name} = $attribute_value;
-      $output_hash->{'experiment_source_id'} = $experiment_name;
-
-
-      my $broad = assign_peak_call_type( $attribute_value )
-                      if( $attribute_name eq 'EXPERIMENT_TYPE' );
-   
-      $output_hash->{'broad'} = $broad;    ## setting parameter for peak calling 
  
       throw("did not get an experiment wiith $experiment_name") if !$experiment;
         
@@ -123,29 +103,73 @@ sub create_seed_params {
 
           my $experiment_attributes = $exp->attributes;
           my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
-          next EXP unless $attribute->attribute_value eq $require_experiment_type;                             ## look into next experiment
+          next EXP unless $attribute->attribute_value eq $require_experiment_type;                           ## look into next experiment
 
           throw("got multiple file for collection $input_experiment_name and type $bam_collection_type") if scalar @{$collection->other_ids} >1;
 
           my $file = $fa->fetch_by_dbID( $collection->other_ids->[0]);
           next EXP if !$file;
 
-          throw("got multiple input file for experiment $experiment_name") if $input_file;  ## expecting single input file, unless mentioned in the non_match_input file
+          throw("got multiple input file for experiment $experiment_name") if $input_file;                   ## expecting single input file, unless mentioned in the non_match_input file
           $input_file = $file->name; 
           
         }
      }
-     next SEED  if !$input_file;  ## input may not be available yet
+     next SEED  if !$input_file;                                                                             ## input may not be available yet
      
      throw('no input file prefix') if !$input_prefix;
      $output_hash->{$input_prefix} =    $input_file;
      push ( @new_seed_params, $seed_params );
   }  
-dump( @new_seed_params );
 
-  $self->seed_params(\@new_seed_params);  ## updating the seed param
+  $self->seed_params(\@new_seed_params);                                                                     ## updating the seed param
   $db->dbc->disconnect_when_inactive(1);
 }
+
+=head1
+
+Check EXPERIMENT_TYPE attribute and return 1 if its not Input and has a valid exp type
+
+=cut 
+
+sub _check_exp_type{
+  my ( $experiment_attributes, $exp_type_attribute_name ,$require_experiment_type, $output_hash ) = @_;
+  my $exp_check_flag = 1;                                                                  ## default allow all
+
+  my ($exp_type_attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
+  $exp_check_flag = 0 unless $exp_type_attribute;                                          ## fix for missing EXPERIMENT_TYPE attribute 
+
+  if( $exp_type_attribute ){
+    my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
+    $exp_check_flag = 0 if $attribute->attribute_value eq $require_experiment_type;          ## not seeding pipeline for input experiments
+
+    if ( $attribute ){
+      my $attribute_name = $attribute->attribute_name;
+      my $attribute_value = $attribute->attribute_value;
+  
+      $attribute_value=~ s/Histone\s+//g
+        if( $attribute_name eq 'EXPERIMENT_TYPE' );                                            ## fix for blueprint ChIP file name
+
+      $attribute_value=~ s/\//_/g
+        if( $attribute_name eq 'EXPERIMENT_TYPE' );                                            ## fix for blueprint ChIP file name for H3K9/14ac
+
+      $attribute_value=~ s/ChIP-Seq\s+//g
+        if( $attribute_name eq 'EXPERIMENT_TYPE' );                                            ## fix for blueprint ChIP file name
+
+      $output_hash->{$attribute_name} = $attribute_value;
+ 
+      my $broad = assign_peak_call_type( $attribute_value )
+                      if( $attribute_name eq 'EXPERIMENT_TYPE' );
+   
+      $output_hash->{'broad'} = $broad;                                                                      ## setting parameter for peak calling 
+    }
+  }
+  return $exp_check_flag;
+}
+
+=head1
+
+=cut
   
 sub _read_non_match_input {
   my ($file) =@_;
