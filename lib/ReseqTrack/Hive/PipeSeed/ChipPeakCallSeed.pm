@@ -87,8 +87,6 @@ sub create_seed_params {
       $attribute_value=~ s/ChIP-Seq\s+//g
          if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint ChIP file name
 
-    #  $attribute_value=~ s/Chromatin\sAccessibility/Dnase/
-    #     if( $attribute_name eq 'EXPERIMENT_TYPE' );    ## fix for blueprint Dnase file name 
 
       $output_hash->{$attribute_name} = $attribute_value;
       $output_hash->{'experiment_source_id'} = $experiment_name;
@@ -111,10 +109,6 @@ sub create_seed_params {
           $input_file = $$input_hash{ $experiment_name };
       }
       else {   
-    #    my $runs = $ra->fetch_by_experiment_id($experiment->dbID);  
-    #    my $sample_id = $$runs[0]->sample_id;                    ## assuming all runs of an experiment are from same sample
-    #    my $sample = $sa->fetch_by_dbID( $sample_id );
-    #    $output_hash->{'sample_alias'} = $sample->sample_alias;
 
         my $all_experiments = $ea->fetch_by_sample_id( $sample_id );
 
