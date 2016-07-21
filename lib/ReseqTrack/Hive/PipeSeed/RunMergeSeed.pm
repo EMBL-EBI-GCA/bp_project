@@ -66,16 +66,6 @@ sub create_seed_params {
     my $experiment_source_id = $experiment->experiment_source_id;
     my $experiment_id        = $experiment->dbID;
 
-    #if( exists ( $$metadata_hash{$experiment_source_id} )){
-   # throw("$experiment_source_id not present in $metadata_file") unless exists ( $$metadata_hash{$experiment_source_id} );
-   # my $metadata_path_hash   = _get_path_hash( $experiment_source_id, $metadata_hash, $path_names_array );
-
-  #  foreach my $path_name ( keys %{$metadata_path_hash} ){
-  #    my $path_value = $$metadata_path_hash{$path_name};
-  #    $output_hash->{$path_name} = $path_value;
-  #  }
-    #}
-
     my $runs = $ra->fetch_by_experiment_id( $experiment_id );
     my $run = $$runs[0];
     next SEED if !$run;
@@ -182,7 +172,6 @@ sub create_seed_params {
         foreach my $run_collection ( @$run_collections ){
           my $collection_type = $run_collection->type;
           next RUN_COLLECTION unless $collection_type eq $run_collection_type;  ## look for only specific collections
-	  #warn "$run_source_id\t$experiment_source_id\t$collection_type\t$run_collection_type\n";
            $seed_experiment ++;               ## merger where existing merged bam not present
         }
       }
