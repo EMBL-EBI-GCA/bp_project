@@ -84,27 +84,28 @@ sub create_seed_params {
 sub  _check_exp_type {
   my ( $experiment_attributes, $exp_type_attribute_name, $output_hash) = @_;
   my $exp_check_flag = 1;                                           ## Default allow all
+
   my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
   $exp_check_flag = 0 unless $attribute;
 
-  my $attribute_name = $attribute->attribute_name;
-  my $attribute_value = $attribute->attribute_value;
+  if ( $attribute ){
+    my $attribute_name  = $attribute->attribute_name;
+    my $attribute_value = $attribute->attribute_value;
 
-  $attribute_value=~ s/Histone\s+//g
-    if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
+    $attribute_value=~ s/Histone\s+//g
+      if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
 
-  $attribute_value=~ s/\//_/g
-    if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name for H3k9/14ac
+    $attribute_value=~ s/\//_/g
+      if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name for H3k9/14ac
 
-  $attribute_value=~ s/ChIP-Seq\s+//g
-    if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
+    $attribute_value=~ s/ChIP-Seq\s+//g
+      if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
 
-  $attribute_value=~ s/Chromatin\sAccessibility/Dnase/
-    if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint Dnase file name 
+    $attribute_value=~ s/Chromatin\sAccessibility/Dnase/
+      if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint Dnase file name 
 
-  $output_hash->{$attribute_name} = $attribute_value;
-
-  
+    $output_hash->{$attribute_name} = $attribute_value;
+  }
   return $exp_check_flag;
 }
 
