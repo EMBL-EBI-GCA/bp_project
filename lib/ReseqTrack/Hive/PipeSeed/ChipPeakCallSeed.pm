@@ -8,7 +8,7 @@ use autodie;
 use Data::Dump qw(dump);
 use Exporter qw(import);
 
-our @EXPORT_OK = qw( _read_non_match_input _check_exp_type _assign_peak_call_type _read_non_match_input );
+our @EXPORT_OK = qw( _read_non_match_input _check_exp_type _assign_peak_call_type );
 
 sub default_options {
   return {
@@ -162,7 +162,7 @@ sub _check_exp_type{
       my $broad = _assign_peak_call_type( $attribute_value )
                       if( $attribute_name eq 'EXPERIMENT_TYPE' );
    
-      $output_hash->{'broad'} = $broad;                                                                      ## setting parameter for peak calling 
+      $output_hash->{'broad'} = $broad if $broad;                                               ## setting parameter for peak calling 
     }
   }
   return $exp_check_flag;
