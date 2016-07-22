@@ -24,6 +24,7 @@ This script will produce the following information:
 ```
 
 Where the 3rd column will be OK if number of features per chr in the comparison among the different files (fileX.bed.gz;fileX.xls.gz;fileX.bb) for a specific sample-experiment combination is the same.
+Hint. Grep for lines containing EMPTY or NOT_OK in the 3rd column
 3rd column will say EMPTY if no features at all were identified for a specifig sample-experiment combination
 In the case of DNASE_HOTSPOT_BB
 - DNASE_HOTSPOT_BED
