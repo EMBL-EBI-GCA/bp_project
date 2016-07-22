@@ -8,7 +8,7 @@ use autodie;
 use Data::Dump qw(dump);
 use Exporter qw(import);
 
-our @EXPORT_OK = qw( _read_non_match_input _check_exp_type );
+our @EXPORT_OK = qw( _read_non_match_input _check_exp_type _assign_peak_call_type _read_non_match_input );
 
 sub default_options {
   return {
@@ -29,9 +29,9 @@ sub create_seed_params {
   my $metadata_hash    = _get_metadata_hash( $metadata_file, 'EXPERIMENT_ID' );
 
   my $require_experiment_type = $options->{'require_experiment_type'} || undef;    
-  my $non_match_input = $options->{'non_match_input'} || undef;
-  my $bam_collection_type = $options->{'bam_collection_type'} || undef;
-  my $input_prefix = $options->{'input_prefix'} || undef;
+  my $non_match_input         = $options->{'non_match_input'} || undef;
+  my $bam_collection_type     = $options->{'bam_collection_type'} || undef;
+  my $input_prefix            = $options->{'input_prefix'} || undef;
   my $exp_type_attribute_name = $options->{'exp_type_attribute_name'} || undef;
   
   throw('this module will only accept pipelines that work on the collection table')
@@ -76,7 +76,6 @@ sub create_seed_params {
 
       $output_hash->{'experiment_source_id'} = $experiment_name;                                             ## adding only for selected seeds
 
- 
       throw("did not get an experiment wiith $experiment_name") if !$experiment;
         
       my $input_file;
@@ -86,7 +85,9 @@ sub create_seed_params {
       $output_hash->{'sample_alias'} = $sample->sample_alias;
         
       if ( exists( $$input_hash{ $experiment_name } )) {
-          $input_file = $$input_hash{ $experiment_name };
+        $input_file = $$input_hash{ $experiment_name };
+        throw("input file doesn't exists: $input_file")
+          unless -e $input_file;
       }
       else {   
 
@@ -118,7 +119,7 @@ sub create_seed_params {
      next SEED  if !$input_file;                                                                             ## input may not be available yet
      
      throw('no input file prefix') if !$input_prefix;
-     $output_hash->{$input_prefix} =    $input_file;
+     $output_hash->{$input_prefix} = $input_file;
      push ( @new_seed_params, $seed_params );
   }  
 
@@ -144,7 +145,7 @@ sub _check_exp_type{
     $exp_check_flag = 0 if $attribute->attribute_value eq $require_experiment_type;          ## not seeding pipeline for input experiments
 
     if ( $attribute ){
-      my $attribute_name = $attribute->attribute_name;
+      my $attribute_name  = $attribute->attribute_name;
       my $attribute_value = $attribute->attribute_value;
   
       $attribute_value=~ s/Histone\s+//g
@@ -158,7 +159,7 @@ sub _check_exp_type{
 
       $output_hash->{$attribute_name} = $attribute_value;
  
-      my $broad = assign_peak_call_type( $attribute_value )
+      my $broad = _assign_peak_call_type( $attribute_value )
                       if( $attribute_name eq 'EXPERIMENT_TYPE' );
    
       $output_hash->{'broad'} = $broad;                                                                      ## setting parameter for peak calling 
@@ -169,6 +170,8 @@ sub _check_exp_type{
 
 =head1
 
+  Read a text file and return a hash with key experiment ids and value input file path
+ 
 =cut
   
 sub _read_non_match_input {
@@ -185,7 +188,13 @@ sub _read_non_match_input {
   return \%input_hash;
 }
 
-sub assign_peak_call_type {
+=head1
+
+  Check experiment type and add broad = 1 in the output hash for the broad chip samples
+
+=cut
+
+sub _assign_peak_call_type {
   my ( $exp_type ) = @_;
   my $broad = 0;
 
