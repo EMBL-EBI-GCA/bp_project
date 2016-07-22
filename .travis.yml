@@ -10,6 +10,7 @@ before_install:
     - "git clone --branch master --depth 1 https://github.com/EMBL-EBI-GCA/bp_project.git ~/bp_project"
     - "git clone --branch master --depth 1 https://github.com/EMBL-EBI-GCA/reseqtrack ~/reseqtrack"
     - "cpanm --installdeps ~/bp_project"
+    - "cpanm --quiet --installdeps --notest ."
 
 env:
   global:
