@@ -5,8 +5,10 @@ use warnings;
 use base ('ReseqTrack::Hive::PipeSeed::BasePipeSeed');
 use ReseqTrack::Tools::Exception qw(throw warning);
 use autodie;
-use Data::Dump qw(dump);
+use Data::Dump qw( dump );
+use Exporter qw( import );
 
+our @EXPORT_OK = qw( _check_exp_type );
 
 sub create_seed_params {
   my ($self) = @_;
@@ -57,34 +59,53 @@ sub create_seed_params {
 
       my $experiment = $ea->fetch_by_source_id( $experiment_name );
       my $experiment_attributes = $experiment->attributes;
-      my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
-      next SEED unless $attribute;                                 ## Fix for missing EXPERIMENT_TYPE attribute
-      
-      my $attribute_name = $attribute->attribute_name;
-      my $attribute_value = $attribute->attribute_value;
 
-      $attribute_value=~ s/Histone\s+//g
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
+      my $exp_type_check = _check_exp_type( $experiment_attributes, $exp_type_attribute_name, $output_hash);
+      next SEED unless $exp_type_check;
 
-      $attribute_value=~ s/\//_/g
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name for H3k9/14ac
-
-      $attribute_value=~ s/ChIP-Seq\s+//g
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
-
-      $attribute_value=~ s/Chromatin\sAccessibility/Dnase/
-         if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint Dnase file name 
-      $output_hash->{$attribute_name} = $attribute_value;
-      $output_hash->{'experiment_source_id'} = $experiment_name;
-        
-      my $runs = $ra->fetch_by_experiment_id($experiment->dbID);  
+      $output_hash->{'experiment_source_id'} = $experiment_name;    ## adding attribute only for selected seeds
+      my $runs      = $ra->fetch_by_experiment_id($experiment->dbID);
       my $sample_id = $$runs[0]->experiment->sample_id;             ## assuming all runs of an experiment are from same sample
-      my $sample = $sa->fetch_by_dbID( $sample_id );
+      my $sample    = $sa->fetch_by_dbID( $sample_id );
       $output_hash->{'sample_alias'} = $sample->sample_alias;
+
       push ( @new_seed_params, $seed_params )
    }
   $self->seed_params(\@new_seed_params);                            ## updating the seed param
   $db->dbc->disconnect_when_inactive(1);
+}
+
+=head1
+
+  Check for Experiment attribute and modify it as required. Returns true if required attributes are present.
+
+=cut
+
+sub  _check_exp_type {
+  my ( $experiment_attributes, $exp_type_attribute_name, $output_hash) = @_;
+  my $exp_check_flag = 1;                                           ## Default allow all
+  my ($attribute) = grep {$_->attribute_name eq $exp_type_attribute_name} @$experiment_attributes;
+  $exp_check_flag = 0 unless $attribute;
+
+  my $attribute_name = $attribute->attribute_name;
+  my $attribute_value = $attribute->attribute_value;
+
+  $attribute_value=~ s/Histone\s+//g
+    if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
+
+  $attribute_value=~ s/\//_/g
+    if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name for H3k9/14ac
+
+  $attribute_value=~ s/ChIP-Seq\s+//g
+    if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint ChIP file name
+
+  $attribute_value=~ s/Chromatin\sAccessibility/Dnase/
+    if( $attribute_name eq 'EXPERIMENT_TYPE' );                ## fix for blueprint Dnase file name 
+
+  $output_hash->{$attribute_name} = $attribute_value;
+
+  
+  return $exp_check_flag;
 }
 
 =head1 _get_path_hash
