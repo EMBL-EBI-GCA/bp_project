@@ -87,8 +87,9 @@ sub create_seed_params {
     }
 
     if (scalar @$output_sample_columns || scalar @$output_sample_attributes) {
-      my $sample = $sa->fetch_by_dbID($run->sample_id);
-      throw('did not get a sample with id '.$run->sample_id) if !$sample;
+
+      my $sample = $run->sample;
+      throw('did not get a sample for run with id '.$run->name) if !$sample;
     
       SAMPLE_COLUMN:
       foreach my $column_name (keys %{$sa->column_mappings($sample)}) {
