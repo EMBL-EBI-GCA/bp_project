@@ -1,4 +1,6 @@
 requires 'autodie';
+require 'DBI';
+require 'DBD::mysql';
 
 on 'build' => sub {
   requires 'Module::Build::Pluggable';
