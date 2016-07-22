@@ -23,12 +23,9 @@ This script will produce the following information:
 /path/to/file/fileA.bb	CHIP_MACS2_BROAD_BB	OK
 ```
 
-Where the 3rd column will be OK if number of features per chr in the comparison among the different files (fileX.bed.gz;fileX.xls.gz;fileX.bb) for a specific sample-experiment combination is the same.
+Where the 3rd column will be OK if the number of features per chr in the comparison among the different files (fileX.bed.gz;fileX.xls.gz;fileX.bb) for a specific sample-experiment combination is the same.
 
-Hint. Grep for lines containing EMPTY or NOT_OK in the 3rd column. 3rd column will have EMPTY if no features at all were identified for a specifig sample-experiment combination
-
-In the case of DNASE_HOTSPOT_BB
-- DNASE_HOTSPOT_BED
+Hint. Grep for lines containing EMPTY or NOT_OK in the 3rd column. EMPTY means that no features at all were identified for a specifig sample-experiment combination
 
 This script will also generate a file named report_chros.bed.txt, containing a report of the frequency of files having features in each chromosome for each particular file type.
 For example, one example of a report_chros.bed.txt showing a possible issue that should be checked would be:
