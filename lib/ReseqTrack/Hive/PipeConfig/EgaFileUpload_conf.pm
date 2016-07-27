@@ -124,19 +124,18 @@ sub pipeline_analyses {
         {   -logic_name => 'list_file',                                      ## get basename of the encrypted file
             -module        => 'Bio::EnsEMBL::Hive::RunnableDB::JobFactory',
             -parameters    => {
+                'move_dir'        => $self->o('move_dir'),
                 'inputcmd'        => 'basename #gpg_file#',
                 'column_names'    => ['gpg_filename'],
                 'fan_branch_code' => 1,
             },
             -flow_into => {
-                1  =>  { 'upload_file' => { 'gpg_filename' => '#gpg_filename#' }},  
+                1  =>  { 'upload_file' => { 'filename' => '#move_dir#/#gpg_filename#' }},  
                 },   
         },
          {    -logic_name => 'upload_file',                                  ## upload to remote FTP using Aspera module, limit 1 job
               -module     => 'ReseqTrack::Hive::Process::Aspera',
               -parameters    => {
-                  'move_dir'   => $self->o('move_dir'),
-                  'filename'   => '#move_dir#/#gpg_filename#',
                   'username'   => $self->o('aspera_username'),
                   'aspera_url' => $self->o('aspera_url'),
                   'upload_dir' => $self->o('upload_dir'),
