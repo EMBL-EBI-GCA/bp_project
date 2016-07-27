@@ -43,7 +43,7 @@ foreach my $path ( keys %$index_hash ) {
     print join("\t", $exp_id,@$row),$/;
   }
   else{
-     $sth_ega->execute( $ega-box, '%'.$filename);
+     $sth_ega->execute( $ega_box, '%'.$filename);
      my $ega_file = undef;
      ( $ega_file ) = $sth_ega->fetchrow_array();
      $ega_file = $ega_file // 'None';
