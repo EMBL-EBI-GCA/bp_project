@@ -38,6 +38,7 @@ sub default_options {
         'trim_path'       => undef,
         'ascp_param'      => undef, 
         'lsf_queue'       => 'production',
+        'move_dir'        => undef,
     };
 }
 
