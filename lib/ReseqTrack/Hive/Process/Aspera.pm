@@ -83,14 +83,13 @@ sub run {
 
     $cmd .= ' ' . $filename . ' ' . $username .'@'. $aspera_url . ':' . $upload_path 
   }
-  my ( $return_value, $stderr, $flat_cmd ) = $self->run_system_command($cmd, {'use_bash_pipefail' => $self->param('use_bash_pipefail')});
+
+  $self->param('cmd', $cmd);                ## set cmd
+  $self->param('use_bash_pipefail', 1);     ## set pipefail
+  $self->SUPER::run();                      ## use SUPER::run()
 
   _check_log_file( $log_dir );
   remove_tree( $log_dir );                  ## cleanup if file transferred correctly
- 
-  $self->param('return_value', $return_value);
-  $self->param('stderr', $stderr);
-  $self->param('flat_cmd', $flat_cmd);
 }
 
 sub _get_hash_to_string {
