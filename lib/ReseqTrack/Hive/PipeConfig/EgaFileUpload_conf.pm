@@ -100,7 +100,7 @@ sub pipeline_analyses {
         {    -logic_name => 'find_encrypted_files',                          ## find newly created encrypted files, creates fan
              -module     => 'Bio::EnsEMBL::Hive::RunnableDB::JobFactory',
              -parameters => {  
-                     'inputcmd'     => 'find #filename#.*',
+                     'inputcmd'     => 'find #filename#.*|grep -E "gpg|md5"',
                      'column_names' => [ 'gpg_file' ],
              },
                -flow_into => {
