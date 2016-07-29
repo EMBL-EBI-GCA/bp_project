@@ -6,7 +6,16 @@
 
 =head1 SYNOPSIS
 
-    init_pipeline.pl ReseqTrack::Hive::PipeConfig::EgaFileUpload_conf -inputfile file_list -work_dir dir_name -java_path java_path -ega_jar /path/webin-data-streamer-Upload-Client.jar -upload_dest 'login@host:/path/'
+    perl init_pipeline.pl                                     \
+         ReseqTrack::Hive::PipeConfig::EgaFileUpload_conf     \
+         -work_dir dir_name                                   \
+         -java_path java_path                                 \
+         -ega_jar /path/webin-data-streamer-Upload-Client.jar \
+         -upload_dir '/remote/path/'                          \
+         -trim_path 'remove/from/path'                        \
+         -aspera_username login                               \
+         -aspera_url host_name                                \
+         -ascp_param '#expr({"l"=> "500M"})expr#'        
 
 
 =cut
@@ -23,17 +32,22 @@ use base ('Bio::EnsEMBL::Hive::PipeConfig::HiveGeneric_conf');  # All Hive datab
 sub default_options {
     my ($self) = @_;
     return {
-        %{ $self->SUPER::default_options() },               # inherit other stuff from the base class
+        %{ $self->SUPER::default_options() },                   # inherit other stuff from the base class
 
-        'pipeline_name' => 'ega_upload',                   # name used by the beekeeper to prefix job names on the farm
+        'pipeline_name'   => 'ega_upload',                      # name used by the beekeeper to prefix job names on the farm
 
         # runnable-specific parameters' defaults:
-        'java_path'   => 'java',
-        'ega_jar'     => undef,
-        'file'        => undef,
-        'work_dir'    => undef,
-        'upload_dest' => undef,
-        'lsf_queue'   => 'production',
+        'java_path'       => 'java',
+        'ega_jar'         => undef,
+        'file'            => undef,
+        'work_dir'        => undef,
+        'upload_dir'      => undef,
+        'aspera_username' => undef,
+        'aspera_url'      => undef,
+        'trim_path'       => undef,
+        'ascp_param'      => undef, 
+        'lsf_queue'       => 'production',
+        'move_dir'        => undef,
     };
 }
 
@@ -41,7 +55,7 @@ sub default_options {
 sub pipeline_create_commands {
     my ($self) = @_;
     return [
-        @{$self->SUPER::pipeline_create_commands},  # inheriting database and hive tables' creation
+        @{$self->SUPER::pipeline_create_commands},             # inheriting database and hive tables' creation
 
         'mkdir -p '.$self->o('work_dir'),
     ];
@@ -67,19 +81,18 @@ sub hive_meta_table {
 sub pipeline_analyses {
     my ($self) = @_;
     return [
-        {   -logic_name => 'find_files',
+        {   -logic_name => 'find_files',                                      ## find listed files, creates fan
             -module     => 'Bio::EnsEMBL::Hive::RunnableDB::JobFactory',
             -parameters => {
                 'inputcmd'     => 'cat #file#',
                 'column_names' => [ 'filename' ],
             },
             -flow_into => {
-                '2->A'  =>  [ 'encrypt_file' ],     
-                'A->1'  =>  [ 'list_file' ], 
+                2  =>  [ 'encrypt_file' ],     
             },
         },
 
-        {   -logic_name => 'encrypt_file',
+        {   -logic_name => 'encrypt_file',                                    ## encrypt each file
             -module        => 'Bio::EnsEMBL::Hive::RunnableDB::SystemCmd',
             -parameters    => {
                 'java_path' => $self->o('java_path'),
@@ -87,53 +100,61 @@ sub pipeline_analyses {
                 'cmd'       => '#java_path# -jar #ega_jar# -file #filename#',
             },
             -analysis_capacity => 10,
-            -rc_name => '500Mb',
-            -flow_into => {
-            1 => [ 'find_encrypted_files' ],
+            -rc_name           => '500Mb',
+            -flow_into         => {
+                1 => [ 'find_encrypted_files' ],
             },
         },
         
-        {    -logic_name => 'find_encrypted_files',
+        {    -logic_name => 'find_encrypted_files',                          ## find newly created encrypted files, creates fan
              -module     => 'Bio::EnsEMBL::Hive::RunnableDB::JobFactory',
              -parameters => {  
-                     'inputcmd'      => 'find #filename#.*',
+                     'inputcmd'     => 'find #filename#.*|grep -E "gpg|md5"',
                      'column_names' => [ 'gpg_file' ],
              },
                -flow_into => {
-                   2 => [ ':////accu?gpg_file=[]' ],
+                   2 => [ 'move_file' ],
                }
         },
 
-        {   -logic_name => 'list_file',
+        {   -logic_name => 'move_file',                                     ## move gpg files in move_dir/ 
+            -module     => 'Bio::EnsEMBL::Hive::RunnableDB::SystemCmd',
+            -parameters    => {
+                'move_dir' => $self->o('move_dir'),
+                'cmd'      => 'mv #gpg_file# #move_dir#/', 
+            },
+            -analysis_capacity => 10,
+            -rc_name           => '500Mb',
+            -flow_into         => {
+                1 => [ 'list_file' ],
+            },
+        },
+
+        {   -logic_name => 'list_file',                                      ## get basename of the encrypted file
             -module        => 'Bio::EnsEMBL::Hive::RunnableDB::JobFactory',
             -parameters    => {
-                'inputlist'       => '#gpg_file#',
-                'column_names' => ['gpg_filename'],
+                'move_dir'        => $self->o('move_dir'),
+                'inputcmd'        => 'basename #gpg_file#',
+                'column_names'    => ['gpg_filename'],
                 'fan_branch_code' => 1,
             },
             -flow_into => {
-                1  =>  { 'upload_file' => { 'gpg_filename' => '#gpg_filename#', 'gpg_suffix' => '#expr( (#gpg_filename# =~ /\S+\/(\S+)$/)[0] )expr#' }},  
+                1  =>  { 'upload_file' => { 'filename' => '#move_dir#/#gpg_filename#' }},  
                 },   
         },
-         {    -logic_name => 'upload_file',
-              -module     => 'Bio::EnsEMBL::Hive::RunnableDB::SystemCmd',
+         {    -logic_name => 'upload_file',                                  ## upload to remote FTP using Aspera module, limit 1 job
+              -module     => 'ReseqTrack::Hive::Process::Aspera',
               -parameters    => {
-                  'work_dir' => $self->o('work_dir'),
-                  'upload_dest' => $self->o('upload_dest'),
-                  'cmd'       => 'mkdir -p #work_dir#/#gpg_suffix#;rm -f #work_dir#/#gpg_suffix#/aspera-scp-transfer.log;ascp -d -k2  -Tr -Q -l 100M -L #work_dir#/#gpg_suffix# #gpg_filename# #upload_dest#/#gpg_suffix#; cat #work_dir#/#gpg_suffix#/aspera-scp-transfer.log|perl -e \'while(<>){if(/LOG - Source file transfers passed\s+:\s+(\d)/){ die unless $ 1 > 0}}\'',
+                  'username'   => $self->o('aspera_username'),
+                  'aspera_url' => $self->o('aspera_url'),
+                  'upload_dir' => $self->o('upload_dir'),
+                  'trim_path'  => $self->o('trim_path'),
+                  'work_dir'   => $self->o('work_dir'),
+                  'ascp_param' => $self->o('ascp_param'),
               },
-              -rc_name => '500Mb',
-              -flow_into => {
-                 1  =>  { 'clean_file' => { 'gpg_filename' => '#gpg_filename#', 'gpg_suffix' => '#gpg_suffix#'} }, 
-             },
+              -rc_name           => '500Mb',
+              -analysis_capacity => 1,
          },
-         {   -logic_name => 'clean_file',
-             -module        => 'Bio::EnsEMBL::Hive::RunnableDB::SystemCmd',
-             -parameters    => {
-                'work_dir' => $self->o('work_dir'),
-                'cmd'       => 'rm -f #gpg_filename#; rm -rf #work_dir#/#gpg_suffix#',
-            },
-        },
     ];
 }
 
