@@ -62,9 +62,15 @@ sub run {
   $cmd .= ' '. $ascp_param_str
     if $ascp_param_str;
   
+  my $trim_re  = qr/$trim_path/ 
+     if $trim_path;
+
   if ( $download_dir && !$upload_dir ){     ## Aspera download command
 
-    my $download_path = $download_dir .'/'. dirname $filename;
+    my $dest_path     = dirname $filename;
+    $dest_path        =~ s/$trim_re//g
+                           if $trim_path;   ## trim destination path
+    my $download_path = $download_dir .'/'. $dest_path;
     $download_path    =~ s{//}{/}g;
     make_path( $download_path );            ## preserve the directory structure
 
@@ -76,8 +82,8 @@ sub run {
       unless $trim_path;
    
     my $upload_path = $filename;
-    my $trim_re  = qr/$trim_path/;
-    $upload_path =~ s/$trim_re//g;
+    $upload_path =~ s/$trim_re//g
+                      if $trim_path;       ## trim upload path
     $upload_path = $upload_dir.'/'.$upload_path .'/';
     $upload_path =~ s{//}{/}g;
 
