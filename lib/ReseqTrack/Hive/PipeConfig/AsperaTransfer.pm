@@ -1,3 +1,25 @@
+=pod
+
+=head1 NAME
+
+    ReseqTrack::Hive::PipeConfig::AsperaTransfer 
+
+=head1 SYNOPSIS
+
+       perl init_pipeline.pl                               \
+         ReseqTrack::Hive::PipeConfig::AsperaTransfer      \
+         -pipeline_url mysql://hive_url                    \
+         -work_dir /work/log_dir                           \
+         -lsf_queue lsf_queue                              \
+         -hive_force_init 1                                \
+         -aspera_username user_name                        \
+         -aspera_url url                                   \
+         -ascp_param '#expr({"l"=> "500M"})expr#'          \
+         -trim_path '/remove/from/original/path'           \
+         -download_dir /destination_dir/ 
+
+=cut
+
 package ReseqTrack::Hive::PipeConfig::AsperaTransfer;
 
 use strict;

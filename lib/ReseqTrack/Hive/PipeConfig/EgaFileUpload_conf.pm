@@ -6,7 +6,16 @@
 
 =head1 SYNOPSIS
 
-    init_pipeline.pl ReseqTrack::Hive::PipeConfig::EgaFileUpload_conf -inputfile file_list -work_dir dir_name -java_path java_path -ega_jar /path/webin-data-streamer-Upload-Client.jar -upload_dIR '/path/' -aspera_username login -aspera_url host_name
+    perl init_pipeline.pl                                     \
+         ReseqTrack::Hive::PipeConfig::EgaFileUpload_conf     \
+         -work_dir dir_name                                   \
+         -java_path java_path                                 \
+         -ega_jar /path/webin-data-streamer-Upload-Client.jar \
+         -upload_dir '/remote/path/'                          \
+         -trim_path 'remove/from/path'                        \
+         -aspera_username login                               \
+         -aspera_url host_name                                \
+         -ascp_param '#expr({"l"=> "500M"})expr#'        
 
 
 =cut
