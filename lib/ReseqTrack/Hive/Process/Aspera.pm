@@ -81,7 +81,7 @@ sub run {
     die "trim_path is required for file upload",$/
       unless $trim_path;
    
-    my $upload_path = $filename;
+    my $upload_path = dirname $filename;   ## remove filename from upload path
     $upload_path =~ s/$trim_re//g
                       if $trim_path;       ## trim upload path
     $upload_path = $upload_dir.'/'.$upload_path .'/';
