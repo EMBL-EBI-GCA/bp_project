@@ -972,7 +972,7 @@ sub signal_min_max {
     if ( $analysis_type =~ /CPG/ && $analysis_type =~ /call/i ) {
       ( $min, $max ) = ( 0, 1 );
     }
-    elsif ( $analysis_type =~ /CPG/ && $analysis_type =~ /sd/i ) {
+    elsif ( $analysis_type =~ /CPG/ && $analysis_type =~ /cov/i ) {
     ( $min, $max ) = ( 0, 0.1 );
     }
   }  
