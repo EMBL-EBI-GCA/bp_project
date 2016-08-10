@@ -11,9 +11,10 @@ my $index_file;
 my $parent_name        = 'bp';
 my $parent_tag         = 'BLUEPRINT';
 my $track_priority     = 4;
-my $sample_shortname   = 'short_name_template.txt'; ### require for trackhub short label
+my $sample_shortname   = undef; ### require for trackhub short label
 my $shortname_keyword  = 'SHORT_NAME';
-my $analysis_info_file = 'analysis_info.txt';
+my $analysis_info_file = undef;
+my $epirr_index        = undef;
 
 my $track_on_sample_barcode = 'C0010K';
 my $track_on_cell_type      = 'CD14-positive, CD16-negative classical monocyte';
@@ -29,7 +30,7 @@ my $track_on_cell_type      = 'CD14-positive, CD16-negative classical monocyte';
 
 my $usage =<<USAGE;
 
-perl $0 -index_file <index_file> -ftp_base <ftp_base> -analysis_info <tab delimited file>     
+perl $0 -index_file <index_file> -ftp_base <ftp_base> -analysis_info <tab delimited file>  -short_name_file <short_name_file>
 
 USAGE
 
@@ -71,6 +72,11 @@ my @priority_tags = qw/  view
 
 my @subgroup_tags =  ( @dimension_tags, ,"sample_description_3", "view" );
 
+### read epirr index ###
+my $epirr_hash = {};
+$epirr_hash = read_epirr_index( $epirr_index )
+                if $epirr_index;
+
 ### read index file ###
                          
 my @index_data = sort {
@@ -87,7 +93,7 @@ my $analysis_info_array = read_file( $analysis_info_file );
 
 ### add info to hash ###
 
-map { add_data_to_file_entry( $_, $ftp_base, $file_base, $analysis_info_array ) } @index_data;
+map { add_data_to_file_entry( $_, $ftp_base, $file_base, $analysis_info_array, $epirr_hash ) } @index_data;
  
 my $track_label_hash = track_analysis_label( $sample_shortname, $shortname_keyword );
 
@@ -149,14 +155,38 @@ foreach my $view ( @views ) {
 
 #######################
 
+sub read_epirr_index {
+  my ( $epirr_index ) = @_;
+  open my $fh, '<', $epirr_index;
+  my @header;
+  my %epirr_hash;
+
+  while ( <$fh> ) {
+    chomp;
+    next if m/^#/;
+    my @vals = split "\t", $_;
+    die unless scalar @vals == 3;
+ 
+    if (@header) {
+      $epirr_hash{ $vals[0] } = $vals[2];      
+    }
+    else {
+      @header = map { uc($_) } @vals;
+    }
+  }
+  close( $fh );
+  return \%epirr_hash;
+}
+
+
 sub read_file {
-  my ($file) = @_;
+  my ( $file ) = @_;
 
   open my $fh, '<', $file || die("Could not open $file: $!");
 
   my @header;
   my @data;
-  while (<$fh>) {
+  while ( <$fh> ) {
     chomp;
     next if m/^#/;
 
@@ -171,21 +201,28 @@ sub read_file {
       @header = map { uc($_) } @vals;
     }
   }
+  close( $fh );
 
   return \@data;
 }
 
 
 sub add_data_to_file_entry {
-  my ( $fe, $ftp_base, $file_base, $analysis_info_array ) = @_;
+  my ( $fe, $ftp_base, $file_base, $analysis_info_array, $epirr_hash ) = @_;
   
   $fe = get_analysis_details( $fe, $analysis_info_array );
   
+  my $sample_name = $fe->{SAMPLE_NAME};
+  $sample_name =~ s{\s+}{_}g;
+  $sample_name =~ s{/}{_}g;
+ 
+  
+  $fe->{SAMPLE_NAME}           = $sample_name; 
+  $fe->{sample_id}             = $fe->{SAMPLE_NAME};  
   $fe->{lab}                   = $fe->{CENTER_NAME};
   $fe->{cell_type}             = $fe->{CELL_TYPE};
   $fe->{donor_id}              = $fe->{DONOR_ID};
   $fe->{tissue}                = $fe->{TISSUE_TYPE};
-  $fe->{sample_id}             = $fe->{SAMPLE_NAME};  
   $fe->{url}                   = $ftp_base  . $fe->{FILE};
   $fe->{file_path}             = $file_base . $fe->{FILE};  
   $fe->{sample_description_1}  = $fe->{SAMPLE_DESC_1};       ### fix all CAPS on/off
@@ -195,6 +232,11 @@ sub add_data_to_file_entry {
   $fe->{analysis_type}         = $fe->{ANALYSIS_TYPE};
   $fe->{experiment}            = $fe->{EXPERIMENT};
   $fe->{short_analysis_type}   = $fe->{SHORT_ANALYSIS_TYPE};
+
+  my $exp_id = $fe->{EXPERIMENT_ID};
+  my $epirr_id;
+  $epirr_id = $$epirr_hash{ $exp_id } if exists $$epirr_hash{ $exp_id };
+  $fe->{EPIRR_ID} = $epirr_id if $epirr_id;
 
   if ( $fe->{FILE} =~ /\.bw$/ ) {
     $fe->{view} = 'signal';
@@ -207,8 +249,8 @@ sub add_data_to_file_entry {
   }
   
   $fe->{sample_description} = $fe->{SAMPLE_DESC_3};
-  $fe->{sample_source} = $fe->{SAMPLE_DESC_1};
-  $fe->{sample_barcode} = $fe->{SAMPLE_DESC_2};
+  $fe->{sample_source}      = $fe->{SAMPLE_DESC_1};
+  $fe->{sample_barcode}     = $fe->{SAMPLE_DESC_2};
      
   if ( $fe->{BIOMATERIAL_TYPE} =~ m/Cell Line/i ) {   ### cell line should have "SEX", not "DONER_SEX"
     $fe->{SEX} = $fe->{DONOR_SEX};        
@@ -526,6 +568,8 @@ sub one_peak_track {
   my $seq_type       = $data->{seq_type};
   my $path           = $data->{path};
   my $analysis_group = $data->{analysis_group};
+  my $experiment_id  = $data->{EXPERIMENT_ID};
+ 
 
   my $colour;
   my $track_type;
@@ -554,7 +598,7 @@ sub one_peak_track {
   my $track_name;
   
   if ( $analysis_type ) {
-   $track_name = "${parent_track_name}${sample_id}${experiment}${analysis_type}${analysis_group}";
+   $track_name = "${parent_track_name}${experiment_id}${sample_id}${experiment}${analysis_type}${analysis_group}";
   }
 
   
@@ -637,6 +681,7 @@ sub one_signal_track {
   my $lab            = $data->{lab};
   my $seq_type       = $data->{seq_type};
   my $analysis_group = $data->{analysis_group}; 
+  my $experiment_id  = $data->{EXPERIMENT_ID};
   
   $tag_setup = metadata_tag( $tag_setup , $data->{BIOMATERIAL_TYPE} ); ## add metadata tag
 
@@ -663,7 +708,7 @@ sub one_signal_track {
   my $track_name;
   
   if ( $analysis_type ) {
-   $track_name = "${parent_track_name}${sample_id}${experiment}${analysis_type}${analysis_group}";
+   $track_name = "${parent_track_name}${experiment_id}${sample_id}${experiment}${analysis_type}${analysis_group}";
   }
 
   
@@ -725,7 +770,8 @@ sub trachub_metadata {
                         ALIGNMENT_SOFTWARE 
                         ALIGNMENT_SOFTWARE_VERSION 
                         ANALYSIS_SOFTWARE 
-                        ANALYSIS_SOFTWARE_VERSION 
+                        ANALYSIS_SOFTWARE_VERSION
+                        EPIRR_ID 
                    /;
 
   my @cell_fields = qw/  DONOR_ID
@@ -800,7 +846,7 @@ sub colour {
   my %colour = (
     'DNASE-HYPERSENSITIVITY'  => { 'DNase' => '8,104,172' },
     'BISULFITE-SEQ'           => {
-      'CPG_methylation_sd'    => '251,143,32',
+      'CPG_methylation_cov'    => '251,143,32',
       'CPG_methylation_calls' => '251,143,32',
       'hypo_methylation'      => '252,180,100',
       'hyper_methylation'     => '250,108,0',
@@ -818,10 +864,13 @@ sub colour {
 
     },
     'RNA-SEQ' => {
-      'Signal'         => '0,177,92',
-      'RNAPlus'        => '0,177,92',
-      'RNAMinus'       => '0,177,92',
-      'RNAUnstranded'  => '0,177,92',
+      'Signal'              => '0,177,92',
+      'RNAPlus'             => '0,177,92',
+      'RNAPlusMulti'        => '0,177,92',
+      'RNAMinus'            => '0,177,92',
+      'RNAMinusMulti'       => '0,177,92',
+      'RNAUnstranded'       => '0,177,92',
+      'RNAUnstrandedMulti'  => '0,177,92',
       
     },
   );
@@ -851,6 +900,10 @@ sub track_label {
   
   #ChIP seq hack for short labels
   $experiment =~ s/^H3K/K/;
+  #BS-Seq hack
+  $experiment =~ s/^BS-Seq/BS/;
+  #RNA-Seq hack
+  $experiment =~ s/^RNA-Seq/RNA/;
 
   push @short, $experiment; 
   push @short, $data->{short_analysis_type};
